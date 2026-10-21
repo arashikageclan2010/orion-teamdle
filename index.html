@@ -1,0 +1,973 @@
+<title>Orion Team-dle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Source+Sans+3:wght@400;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: party-formation strip, a stage bar, then one guessing column per hidden slot. */
+:root {
+  --bg: #eef1f6;
+  --panel: #ffffff;
+  --ink: #18223a;
+  --muted: #5b6680;
+  --line: #d3d9e6;
+  --gold: #a87a12;
+  --gold-soft: #f3e7c6;
+  --holly: #b3263a;
+  --hit: #2f8a4c;
+  --near: #c9971a;
+  --miss: #77819a;
+  --chip-hit: #d9efe0;
+  --chip-hit-ink: #1d6a37;
+  --chip-miss: #e7eaf1;
+  --chip-miss-ink: #5b6680;
+  --font-display: "Cinzel", "Trajan Pro", Georgia, serif;
+  --font-body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0d1324; --panel: #151d33; --ink: #e6eaf4; --muted: #9aa4be; --line: #2a3553;
+  --gold: #e3b54a; --gold-soft: #3a3016; --holly: #e0566a;
+  --hit: #3fae63; --near: #d9a92a; --miss: #4b5573;
+  --chip-hit: #1c3a28; --chip-hit-ink: #8fdcaa; --chip-miss: #1f2840; --chip-miss-ink: #9aa4be;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0d1324; --panel: #151d33; --ink: #e6eaf4; --muted: #9aa4be; --line: #2a3553;
+  --gold: #e3b54a; --gold-soft: #3a3016; --holly: #e0566a;
+  --hit: #3fae63; --near: #d9a92a; --miss: #4b5573;
+  --chip-hit: #1c3a28; --chip-hit-ink: #8fdcaa; --chip-miss: #1f2840; --chip-miss-ink: #9aa4be;
+  color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--font-body); }
+.wrap { max-width: 1040px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 56px; display: grid; gap: 26px; }
+header { display: grid; gap: 6px; }
+.eyebrow { font: 600 12px/1 var(--font-body); letter-spacing: .14em; text-transform: uppercase; color: var(--holly); }
+h1 { font: 800 clamp(28px, 6vw, 44px)/1.05 var(--font-display); margin: 0; letter-spacing: .02em; text-wrap: balance; }
+h1 span { color: var(--gold); }
+.lede { margin: 0; color: var(--muted); max-width: 66ch; }
+h2 { font: 600 14px/1 var(--font-display); letter-spacing: .12em; text-transform: uppercase; margin: 0; color: var(--muted); }
+.section { display: grid; gap: 14px; }
+
+.quest { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 12px; }
+.q-head { display: grid; gap: 2px; }
+.q-name { font: 600 19px/1.25 var(--font-display); text-wrap: balance; }
+.q-meta { font-size: 13px; color: var(--muted); }
+.q-notes { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.q-notes li { font-size: 13px; font-weight: 600; background: var(--gold-soft); border-radius: 6px; padding: 3px 8px; }
+.waves { display: grid; grid-template-columns: repeat(var(--waves, 3), minmax(0, 1fr)); gap: 10px; }
+.wave { border-top: 2px solid var(--line); padding-top: 8px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+.wave-h { display: flex; justify-content: space-between; gap: 8px; font: 600 12px/1.2 var(--font-body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.wave-h span:last-child { font-family: var(--font-mono); letter-spacing: 0; text-transform: none; font-variant-numeric: tabular-nums; }
+.enemy { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 8px; font-size: 13.5px; }
+.enemy.has-sprite { grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; }
+.enemy.has-sprite .e-sprite { grid-row: 1 / span 2; width: 44px; height: 44px; border-radius: 8px; background: var(--bg); box-shadow: 0 0 0 1px var(--line); }
+.enemy.has-sprite .e-cls { grid-column: 2 / -1; }
+.enemy .e-name { overflow-wrap: anywhere; }
+.enemy .e-hp { font-family: var(--font-mono); font-size: 12.5px; font-variant-numeric: tabular-nums; text-align: right; }
+.enemy .e-cls { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
+.formation { display: grid; grid-template-columns: repeat(var(--units, 4), minmax(0, 1fr)); gap: 10px; }
+.slot { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.slot .tag { font: 600 11px/1 var(--font-body); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.slot.backline { border-style: dashed; }
+.slot.support .tag { color: var(--gold); }
+.slot.fixed { border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); }
+.slot .name { font: 600 17px/1.2 var(--font-display); overflow-wrap: anywhere; }
+.slot .name.q { color: var(--muted); font-size: 24px; }
+.facts { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 3px 10px; font-size: 13px; }
+.facts dt { color: var(--muted); }
+.facts dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.facts dd.q { color: var(--muted); font-weight: 400; }
+.facts dd.won { color: var(--hit); }
+.facts dd.lost { color: var(--holly); }
+.extra { margin: 0; padding: 0; list-style: none; font-size: 12.5px; color: var(--muted); display: grid; gap: 1px; border-top: 1px solid var(--line); padding-top: 6px; }
+.mc { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; color: var(--muted); }
+.mc b { color: var(--ink); font-weight: 600; }
+
+.steps { display: grid; grid-template-columns: repeat(var(--stages, 3), minmax(0, 1fr)); gap: 8px; }
+.step { text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 2px; color: var(--ink); font: inherit; cursor: pointer; }
+.step .s-n { font: 500 12px var(--font-mono); color: var(--muted); }
+.step .s-t { font: 600 15px/1.2 var(--font-display); }
+.step .s-st { font-size: 12.5px; color: var(--muted); }
+.step[aria-current="step"] { border-color: var(--holly); box-shadow: inset 0 0 0 1px var(--holly); }
+.step.done .s-st { color: var(--hit); }
+.step:disabled { cursor: not-allowed; opacity: .55; }
+.step:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+.cols { display: grid; grid-template-columns: repeat(var(--hidden, 3), minmax(0, 1fr)); gap: 14px; align-items: start; }
+.col { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 12px; min-width: 0; }
+.col.won { border-color: var(--hit); }
+.col.lost { border-color: var(--holly); }
+.col-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+.col-head .who { order: 3; flex-basis: 100%; }
+.col-head h3 { margin: 0; font: 600 16px/1.2 var(--font-display); }
+.col-head .who { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.col-head .left { margin-left: auto; font: 500 13px var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pips { display: flex; gap: 4px; }
+.pip { width: 100%; height: 5px; border-radius: 3px; background: var(--line); }
+.pip.hit { background: var(--hit); } .pip.near { background: var(--near); } .pip.miss { background: var(--miss); }
+.entry { display: flex; gap: 8px; position: relative; }
+.entry input { flex: 1; min-width: 0; font: 15px var(--font-body); padding: 9px 11px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.entry input:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+.list { position: absolute; top: 100%; left: 0; right: 0; z-index: 5; margin: 4px 0 0; padding: 4px; list-style: none; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; max-height: 260px; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,.18); }
+.list li { padding: 5px 9px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.list li small { color: var(--muted); white-space: nowrap; }
+.list li.used { opacity: .5; }
+.list li[aria-selected="true"], .list li:hover { background: var(--gold-soft); }
+.np-pick { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.np-pick button { padding: 10px 0; font: 600 15px var(--font-mono); background: var(--bg); color: var(--ink); border: 1px solid var(--line); }
+.np-pick button:hover:not(:disabled) { border-color: var(--gold); }
+button { font: 700 14px var(--font-body); padding: 9px 14px; border-radius: 8px; border: 1px solid transparent; cursor: pointer; }
+button.primary { background: var(--holly); color: #fff; }
+button.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+button:disabled { opacity: .4; cursor: not-allowed; }
+button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.msg { color: var(--holly); font-size: 13px; }
+.msg:empty { display: none; }
+.outcome { font-size: 14px; font-weight: 600; }
+.outcome.won { color: var(--hit); } .outcome.lost { color: var(--holly); }
+.history { display: grid; gap: 8px; }
+.tile { border-radius: 10px; padding: 9px 11px; display: grid; gap: 7px; color: #fff; min-width: 0; animation: flip .35s ease both; }
+.tile.hit { background: var(--hit); }
+.tile.near { background: var(--near); color: #1d1606; }
+.tile.miss { background: var(--miss); }
+.tile .t-top { display: flex; gap: 8px; align-items: center; }
+.tile .t-name { font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
+.tile .t-n { margin-left: auto; font: 500 12px var(--font-mono); opacity: .85; }
+.tile .t-verdict { font-size: 12px; opacity: .9; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip { font: 600 11.5px/1 var(--font-body); padding: 4px 6px; border-radius: 4px; background: var(--chip-miss); color: var(--chip-miss-ink); white-space: nowrap; }
+.chip.y { background: var(--chip-hit); color: var(--chip-hit-ink); }
+.empty { color: var(--muted); font-size: 13px; border: 1px dashed var(--line); border-radius: 10px; padding: 12px; }
+@keyframes flip { from { transform: rotateX(70deg); opacity: .2; } to { transform: none; opacity: 1; } }
+
+.key { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; color: var(--muted); }
+.sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 6px; }
+.banner { background: var(--gold-soft); border-radius: 10px; padding: 10px 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; font-weight: 600; }
+.result { background: var(--panel); border: 1px solid var(--gold); border-radius: 12px; padding: 18px; display: grid; gap: 12px; }
+.result h3 { margin: 0; font: 800 22px/1.2 var(--font-display); }
+.result pre { margin: 0; font: 500 14px/1.45 var(--font-mono); background: var(--bg); padding: 12px; border-radius: 8px; overflow-x: auto; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.note { color: var(--muted); font-size: 14px; }
+footer { font-size: 12px; color: var(--muted); }
+
+/* Banded CE stage: one row per pool CE, one button per level band. */
+.cb-pick { display: grid; gap: 8px; }
+.cols.wide { grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+.cb-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+.cb-row .who { grid-column: 1 / -1; font-size: 12.5px; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
+.cb-row .who small { color: var(--muted); font-weight: 400; }
+.cb-row button { display: grid; gap: 1px; padding: 5px 0; font: 600 11.5px/1.1 var(--font-mono); background: var(--bg); color: var(--ink); border: 1px solid var(--line); white-space: nowrap; }
+.cb-row button small { font: 600 9.5px/1 var(--font-body); color: var(--muted); letter-spacing: .02em; }
+.cb-row button:hover:not(:disabled) { border-color: var(--gold); }
+
+/* Route stage: one wide card per wave. */
+.cols.one { grid-template-columns: minmax(0, 1fr); }
+.seq { display: flex; flex-wrap: wrap; gap: 4px; }
+.act { font: 600 12.5px/1.2 var(--font-body); padding: 6px 8px; border-radius: 6px; color: #fff; display: inline-flex; align-items: baseline; gap: 5px; border: 1px solid transparent; }
+.act .n { font: 500 10.5px var(--font-mono); opacity: .8; }
+.act.hit { background: var(--hit); }
+.act.near { background: var(--near); color: #1d1606; }
+.act.miss { background: var(--miss); }
+.act.other { background: var(--miss); border: 2px dashed var(--near); }
+.act.blank { background: transparent; border: 1px dashed var(--line); color: var(--muted); min-width: 44px; justify-content: center; }
+button.act.fill { background: var(--gold-soft); color: var(--ink); border-color: var(--gold); font-weight: 600; padding: 6px 8px; }
+.seq.history-row { animation: flip .35s ease both; }
+.r-label { font: 600 12px/1.2 var(--font-body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.pal { display: grid; gap: 6px; }
+.pal-row { display: grid; grid-template-columns: 120px repeat(4, minmax(0, 1fr)); gap: 6px; }
+.pal-row .who { font-weight: 600; font-size: 13px; align-self: center; overflow-wrap: anywhere; display: flex; align-items: center; gap: 6px; }
+.pal button { display: grid; gap: 1px; text-align: left; padding: 6px 8px; background: var(--bg); color: var(--ink); border: 1px solid var(--line); font: 700 13px/1.2 var(--font-body); min-width: 0; }
+.pal button small { font: 400 11.5px/1.25 var(--font-body); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pal button:hover:not(:disabled) { border-color: var(--gold); }
+.pal button.hit { box-shadow: inset 4px 0 0 var(--hit); }
+.pal button.near { box-shadow: inset 4px 0 0 var(--near); }
+.pal button.miss, .pal button.other { opacity: .5; }
+.pal button.locked { opacity: .45; border-style: dashed; background: transparent; }
+.pal button.locked small { font-style: italic; }
+.pal .spacer { visibility: hidden; }
+.pal button.has-ico { grid-template-columns: 28px minmax(0, 1fr); column-gap: 7px; align-items: center; }
+.pal button.has-ico .p-ico { grid-row: 1 / span 2; }
+.pal button.has-ico small { grid-column: 2; }
+.p-ico { width: 28px; height: 28px; border-radius: 4px; object-fit: contain; }
+.pal button.locked .p-ico { filter: grayscale(1); }
+.t-ico { width: 18px; height: 18px; border-radius: 3px; object-fit: contain; align-self: center; margin-block: -2px; }
+@media (max-width: 600px) { .pal button.has-ico { grid-template-columns: minmax(0, 1fr); } .pal button.has-ico .p-ico { grid-row: auto; width: 24px; height: 24px; } .pal button.has-ico small { grid-column: 1; } }
+.r-ctl { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.r-note { margin: 0; font-size: 13.5px; color: var(--muted); }
+@media (max-width: 600px) { .pal-row { grid-template-columns: repeat(4, minmax(0, 1fr)); } .pal-row .who { grid-column: 1 / -1; } }
+
+@media (max-width: 820px) {
+  .waves { grid-template-columns: minmax(0, 1fr); }
+  .formation { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cols { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 480px) { .steps { gap: 6px; } .step { padding: 8px; } .step .s-st { font-size: 11.5px; } }
+@media (prefers-reduced-motion: reduce) { .tile { animation: none; } }
+/* Servant faces: one sprite, positioned per servant. The build appends the sprite rule below. */
+.face { flex: none; display: inline-grid; place-items: center; width: var(--s); height: var(--s); border-radius: calc(var(--s) / 6); background-repeat: no-repeat; background-size: calc(var(--fcols, 24) * var(--s)) auto; background-position: calc(var(--fx, 0) * var(--s) * -1) calc(var(--fy, 0) * var(--s) * -1); box-shadow: 0 0 0 1px var(--line); }
+.face.q, .face.none { background-image: none; background-color: var(--bg); border: 1px dashed var(--line); box-shadow: none; color: var(--muted); font: 600 calc(var(--s) * .42)/1 var(--font-display); }
+.who-row { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.li-main { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ce-ico { position: relative; flex: none; display: inline-block; width: var(--s); height: var(--s); }
+.ce-ico img { display: block; width: 100%; height: 100%; border-radius: 4px; box-shadow: 0 0 0 1px var(--line); }
+.ce-ico.mlb::after { content: "★"; position: absolute; right: -4px; bottom: -5px; font-size: calc(var(--s) * .5); line-height: 1; color: #ffd84a; text-shadow: 0 0 2px #3a2a00, 0 0 2px #3a2a00, 0 1px 1px #000; }
+/* In a narrow party card the text drops below the icon instead of squeezing beside it. */
+.ce-dd { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.ce-dd > span:not(.ce-ico) { flex: 1 1 90px; min-width: 0; }
+.formation .who-row { flex-wrap: wrap; gap: 6px 10px; }
+.formation .who-row .name { flex: 1 1 96px; min-width: 0; overflow-wrap: break-word; hyphens: auto; }
+.cb-row .who { display: flex; align-items: center; gap: 7px; }
+.mlb-star { color: #d99a0f; margin-right: 1px; }
+.sound-btn { font-size: 13px; padding: 6px 12px; margin-top: 4px; }
+/* Animated battle-sprite "profile" (head and shoulders) in place of the face icon; a reveal pops in. */
+.sprite-head { flex: none; width: 64px; height: 64px; border-radius: 11px; background: var(--bg); box-shadow: 0 0 0 1px var(--line); object-fit: cover; }
+.sprite-head.pop { animation: summon .8s cubic-bezier(.2, 1.3, .4, 1) both; }
+@keyframes summon { 0% { transform: translateY(18px) scale(.6); opacity: 0; filter: brightness(2.6) saturate(.4); } 55% { opacity: 1; } 100% { transform: none; filter: none; } }
+@media (prefers-reduced-motion: reduce) { .sprite-head.pop { animation: none; } }
+/* Hints */
+.pip.hint { background: var(--gold); }
+.hints { display: flex; flex-wrap: wrap; gap: 4px; }
+.hint-chip { font-size: 12.5px; background: var(--gold-soft); border-radius: 6px; padding: 3px 8px; }
+.hint-btn { justify-self: start; font-size: 12.5px; padding: 5px 10px; }
+/* Pinned strip: enemies of the wave in view (skill-order stage) */
+.dk-wave { border-bottom: 1px solid var(--line); }
+.dk-wave[hidden] { display: none; }
+.dkw-inner { max-width: 1040px; margin: 0 auto; padding: 5px 16px; display: flex; align-items: center; gap: 12px; }
+.dkw-label { flex: none; display: grid; font: 600 12px/1.15 var(--font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--holly); }
+.dkw-label small { font: 500 11px var(--font-mono); letter-spacing: 0; text-transform: none; color: var(--muted); }
+.dkw-list { display: flex; flex-wrap: wrap; gap: 4px 10px; min-width: 0; }
+.dkw-e { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.dkw-e img, .dkw-ph { width: 32px; height: 32px; border-radius: 6px; background: var(--bg); box-shadow: 0 0 0 1px var(--line); flex: none; }
+.dkw-txt { display: grid; line-height: 1.1; }
+.dkw-name { font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+.dkw-hp { font: 500 10.5px var(--font-mono); color: var(--muted); }
+@media (max-width: 600px) { .dkw-inner { padding: 4px 8px; gap: 8px; } .dkw-name { display: none; } .dkw-e { flex-direction: column; gap: 1px; } .dkw-txt { text-align: center; } }
+/* Line-up sequence on a finished wave card, and the front/back divider */
+.lu-seq { display: grid; gap: 2px; justify-items: start; }
+.lu { display: flex; align-items: center; gap: 4px; }
+.lu-u { display: inline-grid; border-radius: 7px; transition: box-shadow .2s; }
+.lu-u .lu-img, .lu-u .face { width: 30px; height: 30px; border-radius: 6px; background: var(--bg); box-shadow: 0 0 0 1px var(--line); }
+.lu-u.moved { box-shadow: 0 0 0 2px var(--gold); animation: lu-pop .5s ease both; }
+.lu-sep { width: 2px; height: 26px; margin: 0 4px; border-radius: 1px; background: var(--line); }
+.lu-step { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); padding-left: 8px; }
+.lu-arrow { font-size: 15px; color: var(--gold); }
+@keyframes lu-pop { from { transform: scale(.8); } to { transform: none; } }
+.dk-sep { flex: none; align-self: stretch; width: 2px; border-radius: 1px; background: var(--line); }
+/* Pinned team strip */
+.dock { position: fixed; top: 0; left: 0; right: 0; z-index: 20; background: color-mix(in srgb, var(--panel) 92%, transparent); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); box-shadow: 0 6px 18px rgba(0,0,0,.12); animation: dock-in .2s ease both; }
+.dock[hidden] { display: none; }
+.dk-row { max-width: 1040px; margin: 0 auto; padding: 6px 16px; display: flex; gap: 6px; }
+.dk-row > .dk { flex: 1 1 0; }
+.dk { display: grid; grid-template-columns: 40px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 6px; align-items: center; min-width: 0; }
+.dk .dk-img, .dk .face { grid-row: 1 / span 2; width: 40px; height: 40px; border-radius: 8px; background: var(--bg); box-shadow: 0 0 0 1px var(--line); }
+.dk-q { display: grid; place-items: center; color: var(--muted); font: 600 16px var(--font-display); border: 1px dashed var(--line); box-shadow: none !important; }
+.dk-name { font: 600 12px/1.15 var(--font-body); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dk.fixed .dk-name { color: var(--gold); }
+.dk-meta { display: flex; align-items: center; gap: 4px; font: 600 11px var(--font-mono); color: var(--muted); min-height: 18px; }
+@keyframes dock-in { from { transform: translateY(-100%); } to { transform: none; } }
+@media (max-width: 600px) { .dk-row { gap: 4px; padding: 5px 8px; } .dk { grid-template-columns: minmax(0, 1fr); justify-items: center; } .dk .dk-img, .dk .face { grid-row: auto; } .dk-name { display: none; } }
+@media (prefers-reduced-motion: reduce) { .dock { animation: none; } }
+/* CE reference and end summary */
+.ceref { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin-bottom: 14px; }
+.ceref summary { cursor: pointer; font: 600 13px var(--font-body); color: var(--muted); }
+.ceref-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-top: 10px; }
+.ceref-item { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 10px; align-items: start; }
+.ceref-name { font-weight: 700; font-size: 14px; }
+.ceref-name small { color: var(--muted); font-weight: 400; }
+.ceref-item p { margin: 2px 0 0; font-size: 12.5px; line-height: 1.4; }
+.ceref-ev { color: var(--muted); }
+.summary { border-top: 1px solid var(--line); padding-top: 12px; display: grid; gap: 8px; }
+.summary h4 { margin: 0; font: 600 16px var(--font-display); }
+.summary ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 14px; }
+.sum-link { justify-self: start; font-weight: 700; color: var(--holly); }
+.face.badge { background: var(--bc); color: #fff; font: 700 calc(var(--s) * .38)/1 var(--font-body); letter-spacing: .02em; box-shadow: inset 0 0 0 1px rgba(255,255,255,.25); }
+
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow" id="eyebrow"></div>
+    <h1 id="title"></h1>
+    <p class="lede" id="lede"></p>
+    <div><button type="button" class="ghost sound-btn" id="sound" hidden aria-pressed="true"></button></div>
+  </header>
+
+  <section class="section" aria-labelledby="quest-h" id="quest-sec" hidden>
+    <h2 id="quest-h">Quest</h2>
+    <div class="quest" id="quest"></div>
+  </section>
+
+  <div class="dock" id="dock" aria-label="Team so far" hidden></div>
+  <section class="section" aria-labelledby="party-h" id="party-sec">
+    <h2 id="party-h">Party</h2>
+    <div class="formation" id="formation"></div>
+    <div class="mc" id="mc"></div>
+  </section>
+
+  <section class="section" aria-labelledby="stage-h">
+    <h2 id="stage-h">Stages</h2>
+    <div class="steps" id="steps"></div>
+    <div id="banner"></div>
+    <div class="key" id="key"></div>
+    <div id="result"></div>
+    <div id="ceref"></div>
+    <div class="cols" id="cols"></div>
+  </section>
+
+  <footer id="footer"></footer>
+</div>
+
+<script>
+(() => {
+  // Injected by build-game.js. CFG holds no answers; answers live only in ENC.
+  const CFG = {"faces":null,"ceIcons":{},"ceInfo":{"1495":{"base":"Increase Arts Card effectiveness by 10% & Critical Strength by 10% & NP Gain by 15%","mlb":"Increase Arts Card effectiveness by 15% & Critical Strength by 15% & NP Gain by 20%","event":"Increase Restoration Manjyu amount per drop by 1 (MLB: 2)"},"1496":{"base":"Gain 10 C. Stars when entering the field for the first time (1 time) & increase Arts Card effectiveness by 3% & Buster Card effectiveness by 3%","mlb":"Gain 12 C. Stars when entering the field for the first time (1 time) & increase Arts Card effectiveness by 5% & Buster Card effectiveness by 5%","event":"Increase FUKAYA Green Onion amount per drop by 1 (MLB: 2)"},"1497":{"base":"Increase Quick Card effectiveness by 3% & begin battle with NP charged at 10%","mlb":"Increase Quick Card effectiveness by 5% & begin battle with NP charged at 20%","event":"Increase MISO Potato amount per drop by 1 (MLB: 2)"}},"voices":null,"ceVoices":{},"summary":{"title":"Why this team works","points":["Every slot runs an event CE, so all six CEs farm currency (a 6-CE clear). Archers into an all-Saber quest make that possible.","Stars as fuel: the two Love, Anarchy CEs give 10 + 12 stars on entry, covering the 20 stars Miss Crane's NP needs.","Castoria buffs first, then Order Change swaps her out for Crane. Crane's S2 charges her NP, which powers up Orion before Crane retreats and pulls Summer Chloe in.","NP order matters: Crane fires before Durgā's AoE clears the field, and in wave 3 Durgā fires after Orion for more Demonic damage to the bird. Durgā refunds her NP, so she can fire twice.","Summer Chloe's S2 sends her to the back after wave 2, bringing Oberon in to buff Orion for Tsuna. With Oberon's +20% Quick class score, his Quick card covers a low damage roll."]},"spriteCredit":"","title":"Orion Team-dle","eyebrow":"GUDAGUDA Ryouma's Narrow Escape Rerun · 90++ · Guess the team","lede":"Orion leads a 6-CE setup into the Narrow Escape rerun 90++. Rebuild the rest of the team in four stages: the servants, each one's CE, their NP levels, and finally the skill order for every wave.","shareEmoji":"🏮","notes":[["Mystic Code","Decisive Battle Lv10"]],"quest":{"name":"Nooobbu☆Zoo Amusement Park (90++)","event":"Revival: GUDAGUDA Ryouma's Narrow Escape! - Lite","ap":40,"level":"90++","notes":["3 turns minimum","No Command Codes","6-CE setup","Quest and enemy names are unofficial translations (rerun not on NA yet)"],"waves":[[{"name":"Poster Girl A","cls":"Saber","hp":51168,"bars":0,"sprite":null},{"name":"Beat Cop Nobbu A","cls":"Saber","hp":42218,"bars":0,"sprite":null},{"name":"Poster Girl B","cls":"Saber","hp":51914,"bars":0,"sprite":null},{"name":"Beat Cop Nobbu B","cls":"Saber","hp":41554,"bars":0,"sprite":null},{"name":"Poster Girl C","cls":"Saber","hp":50422,"bars":0,"sprite":null},{"name":"Beat Cop Nobbu C","cls":"Saber","hp":40825,"bars":0,"sprite":null}],[{"name":"Illumination Bird","cls":"Saber","hp":508757,"bars":0,"sprite":null}],[{"name":"Illumination Bird","cls":"Saber","hp":253203,"bars":0,"sprite":null},{"name":"Tsuna the Polearm Dealer","cls":"Saber","hp":1001072,"bars":0,"sprite":null}]]},"footer":"Fan-made, non-commercial. No official images, icons, audio or video from Fate/Grand Order are used; only names, game stats and short quotations, per TYPE-MOON's fan-work guidelines. Data from Atlas Academy. Fate/Grand Order is © TYPE-MOON / FGO PROJECT. Not affiliated with TYPE-MOON, Aniplex or Lasengle.","storageKey":"orion-teamdle-compliant-v1","stages":[{"kind":"servant","tries":6},{"kind":"ce","tries":4,"pool":[1495,1496,1497]},{"kind":"np","tries":3},{"kind":"route","tries":6}],"shown":[{"label":"Front 1 · Lead","servant":60,"style":"","facts":[["CE","Adversity Ablaze · Lv100 · MLB"],["NP","NP2"]],"extra":["Lv90 · Skill 2 at 10","Mana Loading 10 (20% start)","Class Score +12% Arts"],"ce":null,"ceMlb":false,"sprite":null}],"slots":[{"name":"Front 2 · Support","short":"SUP","style":"support","ceDetail":"Lv1 · not MLB (10 stars)","extra":["Borrowed support","Skills 10/10/10"]},{"name":"Front 3","short":"F3","style":"","ceDetail":"Lv80 · MLB (12 stars)","extra":["Lv90","Class Score +12% Arts"]},{"name":"Backline 1","short":"B1","style":"backline","ceDetail":"Lv1","extra":["Skills 10/10/10"]},{"name":"Backline 2","short":"B2","style":"backline","ceDetail":"Lv1","extra":["Class Score +20% Quick","Quick card finishes Tsuna on a low damage roll in wave 3"]},{"name":"Backline 3","short":"B3","style":"backline","ceDetail":"Lv1","extra":["Needs 20 stars for her NP (10 + 12 from the Love, Anarchy copies)"]}]};
+  const ENC = {"k":[13,149,51,69],"d":"DBGU6jK3RHkMPq/kCUZ/Pjd2r+4zMkVGDQyVlDMy","r":{"k":[157,50,53,37,82,49,221,168],"d":"5hBASztFroqnaU4HPFi+w78IF2ogWLLGvx4XVjlYscTuEA9+cHavyf5XFUo0EanA+BJySjZVuNvuEnB9cB3/+OhcXFY6EanA+BJgSzRQtNz1VEBJcnD2irEQeEw8VfrbvXdMQHIZm8n2VxwFEBz/9bEQXEY9X66Kp2loCXBfrYqnEGFXOxyO3PxAFWQ/Xq/NvX9cSnBM8dO/XFxGORPnit5TRlE9Q7TJvx4XVjlYscTuEA9+cHK1ye9bRkgzEbLOvXpaVTcRn4qxEGVXPUW4y+lbWktyXruI6VpQBR5Qts29cxcJcGKqx+9WFUo0EY7N8VdWUTtes4jYahd4fhO0y/JcRgdoaoCEv1xFB2gTnNryR1tBcnK8xPRQQFc8E6CE5hBbTDFa/5K/dkBXNfVcirEQRk47XbHbvwhuBx9QtWwcX/GkK/VciNhqFwlwZLPJ7kFUTD5Qv8T4EnpLNxGcirEQYU07Q7mI2EtQBRdp//WxEFxGPV+uiqdpaAlwX62KpxB4RDpYPBE+9rRWJ0O8xfxAUUw89XaK4B5OBzxYvsO/CBd2J1ywze8Sdk0+XriKsRBGTjtdsdu/CG4HGl6qj+4SQU03EY3a8lVHQCFC/eq/HhdyNxGeyfMSckAmEZTcvWBQVT5Qvs35ElxLcmW0xfgScQ55E/GK0FNbUCFSr8HtRhV3N1K4wetXUQRycP/1sRBcRj1froqnaWgJcF+tiqcQeEo8Xr7A711YQHJ4sNjoXkZAcEzx079cXEY5E+eK0lBQVz1f/4S/QV5MPl2uiqdpF2AkVLPB81UVdjpDst35EnB9cB3/5fJAW0w8Vv3k/EBeBRdp/4S/d1tBO1+6iPJUFWEgVLzF7hJwfXBs8Yr0UVpLIRPn88AeF0siE+eKz0tQBQBZpMX4EnJKPVW7zfFeWlJwTPHTv1xcRjkT54rQW0ZWcnKvyfNXFwlwQrbB8V5GB2hq/+T8VkwCIRGczvtXVlE7XrOI+11HBRVQr8X4XEFWcnSFirEQelM3Q7PB+lpBBRpQstr0EncHfhOJwPJHRkQ8VfDx+FNHBRVDvNz0RkBBNxGcisAeF0wxXrPbvwhueH4Ts9i/CBdsPF+yy/hcVkB+EYnA+BJ2VzNfuI/uEmFAM0O73fESc0QgVKrN8V4VdT1UsIrgbxkHP1L/kuYQW0Q/VP+Sv3ZQRjtCtN74EndEJkWxzb8eF1Y5WLHE7hAPfnB1uMv0QVxTNxGfyelGWUByYbLf+EAYcCIT8YrbQFpLJhGRwfNXFXc3UrLe+EBMB34Tktr5V0cFEVm8xvpXF3h+E7TL8lxGB2hqgNWxEFtVG1Kyxr8IFwd+E6rJ61dGB2hqporuV0EHaGrsmbEDBwljAvGRrh4AF34D7ISvABkXYR3onLEAAXh+E7/N+11HQHALhvOsAxkQZmzx86wDGRdmbPHzrAAZEGZs8fOsABkXZmzx86wBGRBmbPHzrAEZF2Zs8fOkARkQZmzx86QBGRdmbPHzqAAZEGZs8fOoABkXZmzx868DGRBmbPHzrwMZF2Zs8fOvABkQZmzx868AGRdmbPHzrwEZEGZs8fOvARkXZmzx86gGGRdmbPHzrAMZHGFs8fOsABkcYWzx86wBGRxhbPHzpAEZEGBsgIS/QFpQJlT/ksYDBAljA/GZrh4MFn4E74SvAxkXYB3vm7EHAQlgBYCEv1xaUTcT54reU0ZRPUO0ybpBFXZgEbzG+RJmFnJWsojyXBVqIFiyxrMSelc2VK+I3lpUSzVU/dvqU0VWcnK82+ldR0wzEbLd6RJTSiARkMHuQRVmIFCzzbMSdlczX7iP7hJmF3JStcnvVVBWclm42r18ZQlyULPMvUZdQHJFqse9flpTNx396fNTR0Y6SP3r2EEVDWMB/YO9AwcFIUW82u4bFUY9R7javUZdQHID7YjuRlRXIRG03L1cUEA2QvOI02IVRjpQtManEnZXM1+4hL1GXUA8EZnd71XxpHwRntr8XFAFOlCuiOldFUI9EbvB70FBCXJTuMv8R0ZAclm42r18ZQU2Xrjb8xVBBTRYr829XVtGNxGZ3e9V8aR1Qv3p8ncVTTNC/cvxV1RXN1X93PVXFUM7VLHMsxJ2VzNfuIjvV0FXN1Cp271TU1E3Q/3A+EAVawIf/ezoQFLh0xGvzftHW0EhEbXN7xJ7dXwT8YrxW1tAJ0H/ksZpF1YlUK2KsQMZEA8dhorvV0FXN1CpirEHaHgvHaaK7ldBB2hq7pmxAQcJYQLxmbELBAlmbPGK/1dTSiBU/5LGaQYUfgWAhMYBBwlmbPHzrgEZEQ8dhpmxBmgJCQjshKlvaAlwQ7Ld6VcXHwkC7ISuABkWYR3shKQDGREPHf/G8kZQB2gTjt3wX1BXcnK1xPJXFUY9XLjbvVtbBTRer4jeQFRLNx/96/VeWkB1Qv37rxJWRDwRqcnvVVBRclCz0fJcUAtyZbXN8xJ6Vztes4jOAxVEPFX97PhRXFY7R7iI31NBUT5U/fusHhVEPFX95+9bWkt1Qv3mzRwXCXBdtMb4R0UHaGqGiu9XQVc3UKmKsQFoeC8dporuV0EHaGrpmbEGBwlmAvGasQYZF2Zs8Yr/V1NKIFT/ksZpARR+BYCExgYECWAFgITGBgcJZmzx86kAGRdmbPHzqQEZEQ8dhpyuHgcRDx2GmrEGaAkJA/GaqW8ZfmYd75zAbxkHIF6o3PgQD35mAPGcrx4BFn4D8ZyxAAF4fhOzx+lXFx9wcrXE8lcSVnJi74juV1tBIRG1ze8SQUpyRbXNvVBURjkRvNy9Rl1AclSzzL1dUwUlUKvNvQAZBSFe/ef/V0dKPBG+x/BXRgU7X/OI1VtGBQED/cnzVhV2YRG6x71dWwUdQ7TH8x4VUTpUs4jSQFxKPBGOmrMSelc7XrOP7hJ7dXJFvNr6V0FWcmWu3fNTGQUmWbjGvXZAVzX1XI/uEnt1fBGZ3e9V8aRyVrLN7hJGQDFes8y9UFBGM0Suzb1aUFdyf42I+V1QVnJcstr4EnFAP16zwf4SRlU3UrTJ8R9UUSZQvsO9VlRIM1a4iOldFVE6VP3K9EBRBSZZvNy9RVRcfBGSxr1TFUk9Rv3a8l5ZCXJ+v83vXVsCIRGM3fRRXgUxUK/MvVRcSztCtc3uEmFWJ1+8k71aXFZyV6jE8RJWSTNCrojuUVpXNxG0271FXUQmEbDJ9ldGBSZZvNy9WlxRclSzx+hVXQtwHf/E9FxQUCIT5/PAT2gJcEO43e5TV0k3E+fzwE8="},"s":null};
+
+  const norm = s => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const $ = id => document.getElementById(id);
+
+  const SV = new Map();
+  (() => {
+    const raw = [[1,"Mash Kyrielight","Shielder",4,"Arts","Support","Earth"],[2,"Altria Pendragon (Saber)","Saber",5,"Buster","AoE","Earth"],[3,"Altria Pendragon (Alter) (Saber)","Saber",4,"Buster","AoE","Man"],[4,"Altria Pendragon (Lily)","Saber",4,"Buster","AoE","Earth"],[5,"Nero Claudius (Saber)","Saber",4,"Arts","AoE","Man"],[6,"Siegfried","Saber",4,"Buster","AoE","Earth"],[7,"Gaius Julius Caesar","Saber",3,"Quick","ST","Man"],[8,"Altera","Saber",5,"Buster","AoE","Man"],[9,"Gilles de Rais (Saber)","Saber",3,"Arts","Support","Man"],[10,"Chevalier d'Eon","Saber",4,"Arts","Support","Man"],[11,"Emiya","Archer",4,"Arts","AoE","Man"],[12,"Gilgamesh (Archer)","Archer",5,"Buster","AoE","Sky"],[13,"Robin Hood","Archer",3,"Arts","ST","Man"],[14,"Atalante","Archer",4,"Quick","AoE","Earth"],[15,"Euryale","Archer",3,"Arts","ST","Sky"],[16,"Arash","Archer",1,"Buster","AoE","Earth"],[17,"Cú Chulainn (Lancer)","Lancer",3,"Quick","ST","Sky"],[18,"Elisabeth Báthory (Lancer, 4★)","Lancer",4,"Buster","AoE","Man"],[19,"Musashibou Benkei","Lancer",2,"Arts","Support","Man"],[20,"Cú Chulainn (Prototype)","Lancer",3,"Quick","ST","Sky"],[21,"Leonidas I","Lancer",2,"Buster","Support","Man"],[22,"Romulus","Lancer",3,"Buster","AoE","Star"],[23,"Medusa (Rider)","Rider",3,"Quick","AoE","Earth"],[24,"Georgios","Rider",2,"Arts","ST","Man"],[25,"Edward Teach","Rider",2,"Buster","AoE","Man"],[26,"Boudica","Rider",3,"Arts","Support","Man"],[27,"Ushiwakamaru (Rider)","Rider",3,"Quick","ST","Man"],[28,"Alexander","Rider",3,"Quick","AoE","Man"],[29,"Marie Antoinette (Rider)","Rider",4,"Quick","AoE","Man"],[30,"Martha (Rider)","Rider",4,"Buster","AoE","Man"],[31,"Medea","Caster",3,"Arts","ST","Earth"],[32,"Gilles de Rais (Caster)","Caster",3,"Buster","AoE","Man"],[33,"Hans Christian Andersen","Caster",2,"Arts","Support","Man"],[34,"William Shakespeare","Caster",2,"Buster","AoE","Man"],[35,"Mephistopheles","Caster",3,"Buster","AoE","Earth"],[36,"Wolfgang Amadeus Mozart","Caster",1,"Arts","Support","Star"],[37,"Zhuge Liang (Lord El-Melloi II)","Caster",5,"Arts","Support","Man"],[38,"Cú Chulainn (Caster)","Caster",3,"Buster","AoE","Sky"],[39,"Sasaki Kojirou","Assassin",1,"Quick","ST","Man"],[40,"Hassan of the Cursed Arm","Assassin",2,"Quick","ST","Man"],[41,"Stheno","Assassin",4,"Buster","Support","Sky"],[42,"Jing Ke","Assassin",3,"Quick","ST","Man"],[43,"Charles-Henri Sanson","Assassin",2,"Buster","ST","Man"],[44,"Phantom of the Opera","Assassin",2,"Arts","AoE","Earth"],[45,"Mata Hari","Assassin",1,"Arts","Support","Man"],[46,"Carmilla (Assassin)","Assassin",4,"Buster","ST","Earth"],[47,"Heracles","Berserker",4,"Buster","ST","Sky"],[48,"Lancelot (Berserker)","Berserker",4,"Quick","AoE","Earth"],[49,"Lu Bu Fengxian","Berserker",3,"Buster","ST","Man"],[50,"Spartacus","Berserker",1,"Buster","AoE","Man"],[51,"Sakata Kintoki (Berserker)","Berserker",5,"Buster","ST","Man"],[52,"Vlad III","Berserker",5,"Arts","ST","Earth"],[53,"Asterios","Berserker",1,"Arts","Support","Earth"],[54,"Caligula","Berserker",2,"Arts","Support","Man"],[55,"Darius III","Berserker",3,"Buster","AoE","Man"],[56,"Kiyohime (Berserker)","Berserker",3,"Buster","AoE","Earth"],[57,"Eric Bloodaxe","Berserker",2,"Buster","AoE","Man"],[58,"Tamamo Cat","Berserker",4,"Quick","AoE","Earth"],[59,"Jeanne d'Arc (Ruler)","Ruler",5,"Arts","Support","Star"],[60,"Orion","Archer",5,"Arts","ST","Sky"],[61,"Elisabeth Báthory (Halloween)","Caster",4,"Buster","AoE","Man"],[62,"Tamamo-no-Mae (Caster)","Caster",5,"Arts","Support","Sky"],[63,"David","Archer",3,"Buster","ST","Sky"],[64,"Hektor","Lancer",3,"Buster","AoE","Man"],[65,"Francis Drake","Rider",5,"Buster","AoE","Star"],[66,"Anne Bonny & Mary Read (Rider)","Rider",4,"Quick","ST","Man"],[67,"Medea (Lily)","Caster",4,"Arts","Support","Earth"],[68,"Okita Souji (Saber)","Saber",5,"Quick","ST","Man"],[69,"Oda Nobunaga (Archer)","Archer",4,"Buster","AoE","Man"],[70,"Scáthach (Lancer)","Lancer",5,"Quick","ST","Star"],[71,"Diarmuid Ua Duibhne (Lancer)","Lancer",3,"Quick","ST","Earth"],[72,"Fergus mac Róich","Saber",3,"Buster","AoE","Earth"],[73,"Altria Pendragon (Santa Alter)","Rider",4,"Buster","AoE","Man"],[74,"Nursery Rhyme","Caster",4,"Arts","AoE","Man"],[75,"Jack the Ripper","Assassin",5,"Quick","ST","Earth"],[76,"Mordred (Saber)","Saber",5,"Buster","AoE","Earth"],[77,"Nikola Tesla","Archer",5,"Buster","AoE","Star"],[78,"Altria Pendragon (Alter) (Lancer)","Lancer",4,"Buster","AoE","Sky"],[79,"Paracelsus von Hohenheim","Caster",3,"Arts","AoE","Man"],[80,"Charles Babbage","Caster",3,"Buster","AoE","Man"],[81,"Henry Jekyll & Hyde","Assassin",3,"Buster","Support","Earth"],[82,"Frankenstein (Berserker)","Berserker",4,"Quick","AoE","Earth"],[84,"Arjuna","Archer",5,"Buster","AoE","Sky"],[85,"Karna","Lancer",5,"Buster","AoE","Sky"],[86,"Mysterious Heroine X","Assassin",5,"Quick","ST","Star"],[87,"Fionn mac Cumhaill","Lancer",4,"Arts","AoE","Sky"],[88,"Brynhild (Lancer)","Lancer",5,"Buster","ST","Sky"],[89,"Beowulf","Berserker",4,"Buster","ST","Earth"],[90,"Nero Claudius (Bride)","Saber",5,"Arts","ST","Man"],[91,"Ryougi Shiki (Saber)","Saber",5,"Arts","AoE","Man"],[92,"Ryougi Shiki (Assassin)","Assassin",4,"Arts","ST","Man"],[93,"Amakusa Shirou","Ruler",5,"Buster","AoE","Man"],[94,"Astolfo (Rider)","Rider",4,"Quick","AoE","Earth"],[95,"Gilgamesh (Child)","Archer",3,"Buster","AoE","Sky"],[96,"Edmond Dantès","Avenger",5,"Quick","AoE","Man"],[97,"Florence Nightingale","Berserker",5,"Arts","Support","Man"],[98,"Cú Chulainn (Alter)","Berserker",5,"Buster","ST","Earth"],[99,"Queen Medb (Rider)","Rider",5,"Buster","ST","Earth"],[100,"Helena Blavatsky (Caster)","Caster",4,"Arts","AoE","Man"],[101,"Rama","Saber",4,"Buster","ST","Sky"],[102,"Li Shuwen (Lancer)","Lancer",4,"Arts","ST","Man"],[103,"Thomas Edison","Caster",4,"Arts","AoE","Man"],[104,"Geronimo","Caster",3,"Arts","AoE","Man"],[105,"Billy the Kid","Archer",3,"Quick","ST","Man"],[106,"Jeanne d'Arc (Alter) (Avenger)","Avenger",5,"Buster","ST","Man"],[107,"Aŋra Mainiiu","Avenger",0,"Arts","Support","Man"],[108,"Iskandar","Rider",5,"Buster","AoE","Man"],[109,"Emiya (Assassin)","Assassin",4,"Arts","ST","Man"],[110,"Hassan of the Hundred Personas","Assassin",3,"Arts","ST","Man"],[111,"Irisviel (Holy Grail)","Caster",4,"Arts","Support","Sky"],[112,"Shuten-Douji (Assassin)","Assassin",5,"Arts","AoE","Earth"],[113,"Xuanzang Sanzang","Caster",5,"Buster","ST","Man"],[114,"Minamoto-no-Raikou (Berserker)","Berserker",5,"Buster","AoE","Sky"],[115,"Sakata Kintoki (Rider)","Rider",4,"Quick","ST","Earth"],[116,"Ibaraki-Douji (Berserker)","Berserker",4,"Buster","ST","Earth"],[117,"Fuuma \"Evil-wind\" Kotarou","Assassin",3,"Quick","AoE","Man"],[118,"Ozymandias","Rider",5,"Buster","ST","Sky"],[119,"Altria Pendragon (Lancer)","Lancer",5,"Buster","AoE","Sky"],[120,"Nitocris (Caster)","Caster",4,"Arts","AoE","Earth"],[121,"Lancelot (Saber)","Saber",4,"Arts","ST","Earth"],[122,"Tristan","Archer",4,"Quick","ST","Earth"],[123,"Gawain","Saber",4,"Buster","AoE","Earth"],[124,"Hassan of the Serenity","Assassin",3,"Arts","ST","Man"],[125,"Tawara Touta","Archer",3,"Buster","AoE","Man"],[126,"Bedivere","Saber",3,"Buster","ST","Star"],[127,"Leonardo da Vinci (Caster)","Caster",5,"Arts","AoE","Star"],[128,"Tamamo-no-Mae (Lancer)","Lancer",5,"Buster","ST","Sky"],[129,"Altria Pendragon (Archer)","Archer",5,"Arts","ST","Earth"],[130,"Marie Antoinette (Caster)","Caster",4,"Arts","AoE","Man"],[131,"Anne Bonny & Mary Read (Archer)","Archer",4,"Buster","ST","Man"],[132,"Mordred (Rider)","Rider",4,"Arts","AoE","Earth"],[133,"Scáthach (Assassin)","Assassin",4,"Quick","AoE","Star"],[134,"Kiyohime (Lancer)","Lancer",4,"Buster","ST","Earth"],[135,"Martha (Ruler)","Ruler",4,"Buster","ST","Man"],[136,"Illyasviel von Einzbern (Caster)","Caster",5,"Buster","ST","Man"],[137,"Chloe von Einzbern (Archer)","Archer",4,"Arts","ST","Sky"],[138,"Elisabeth Báthory (Brave)","Saber",4,"Buster","ST","Earth"],[139,"Cleopatra","Assassin",5,"Buster","AoE","Man"],[140,"Vlad III (EXTRA)","Lancer",4,"Buster","ST","Man"],[141,"Jeanne d'Arc Alter Santa Lily","Lancer",4,"Buster","AoE","Man"],[142,"Ishtar (Archer)","Archer",5,"Buster","AoE","Sky"],[143,"Enkidu","Lancer",5,"Buster","ST","Sky"],[144,"Quetzalcoatl","Rider",5,"Buster","ST","Sky"],[145,"Gilgamesh (Caster)","Caster",4,"Arts","AoE","Man"],[146,"Medusa (Lancer)","Lancer",4,"Quick","ST","Earth"],[147,"Gorgon","Avenger",4,"Buster","AoE","Earth"],[148,"Jaguar Warrior","Lancer",3,"Buster","ST","Earth"],[150,"Merlin","Caster",5,"Arts","Support","Earth"],[153,"Miyamoto Musashi (Saber)","Saber",5,"Buster","ST","Man"],[154,"\"First Hassan\"","Assassin",5,"Buster","ST","Man"],[155,"Mysterious Heroine X (Alter)","Berserker",5,"Quick","ST","Star"],[156,"James Moriarty (Archer)","Archer",5,"Buster","ST","Man"],[157,"Emiya (Alter)","Archer",4,"Arts","ST","Man"],[158,"Hessian Lobo","Avenger",4,"Quick","ST","Earth"],[159,"Yan Qing","Assassin",4,"Quick","ST","Man"],[160,"Arthur Pendragon (Prototype)","Saber",5,"Buster","AoE","Earth"],[161,"Hijikata Toshizo","Berserker",5,"Buster","ST","Man"],[162,"Chacha","Berserker",4,"Buster","AoE","Man"],[163,"Meltryllis","Alter Ego",5,"Quick","ST","Earth"],[164,"Passionlip (Alter Ego)","Alter Ego",4,"Buster","AoE","Earth"],[165,"Suzuka Gozen","Saber",4,"Buster","AoE","Sky"],[166,"BB (Moon Cancer, 4★)","Moon Cancer",4,"Arts","ST","Man"],[167,"Sessyoin Kiara (Alter Ego)","Alter Ego",5,"Arts","AoE","Beast"],[169,"Scheherazade","Caster",5,"Arts","AoE","Man"],[170,"Wu Zetian (Assassin)","Assassin",4,"Quick","ST","Man"],[171,"Penthesilea","Berserker",4,"Buster","ST","Earth"],[172,"Christopher Columbus","Rider",3,"Buster","AoE","Man"],[173,"Sherlock Holmes","Ruler",5,"Arts","Support","Star"],[174,"Paul Bunyan","Berserker",1,"Buster","AoE","Earth"],[175,"Nero Claudius (Caster)","Caster",5,"Buster","AoE","Man"],[176,"Frankenstein (Saber)","Saber",4,"Quick","ST","Earth"],[177,"Nitocris (Assassin)","Assassin",4,"Arts","AoE","Sky"],[178,"Oda Nobunaga (Berserker)","Berserker",4,"Buster","ST","Man"],[179,"Altria Pendragon (Alter) (Rider)","Rider",5,"Quick","ST","Man"],[180,"Helena Blavatsky (Archer)","Archer",4,"Arts","AoE","Man"],[181,"Minamoto-no-Raikou (Lancer)","Lancer",4,"Buster","ST","Sky"],[182,"Ishtar (Rider)","Rider",4,"Quick","AoE","Sky"],[183,"Pārvatī","Lancer",4,"Quick","AoE","Sky"],[184,"Tomoe Gozen (Archer)","Archer",4,"Buster","ST","Earth"],[185,"Mochizuki Chiyome","Assassin",4,"Arts","ST","Earth"],[186,"Houzouin Inshun","Lancer",3,"Arts","Support","Man"],[187,"Yagyu Tajima-no-kami Munenori","Saber",4,"Arts","ST","Man"],[188,"Katou \"Black Kite\" Danzo","Assassin",4,"Buster","AoE","Earth"],[189,"Osakabehime (Assassin)","Assassin",5,"Quick","Support","Earth"],[190,"Mecha Eli-chan","Alter Ego",4,"Buster","ST","Man"],[191,"Mecha Eli-chan Mk.II","Alter Ego",4,"Buster","ST","Man"],[192,"Circe","Caster",4,"Buster","ST","Sky"],[193,"Nezha","Lancer",4,"Buster","AoE","Sky"],[194,"Queen of Sheba","Caster",4,"Arts","ST","Man"],[195,"Abigail Williams","Foreigner",5,"Buster","ST","Earth"],[196,"Ereshkigal (Lancer)","Lancer",5,"Buster","AoE","Earth"],[197,"Attila the San(ta)","Archer",4,"Quick","ST","Star"],[198,"Katsushika Hokusai (Foreigner)","Foreigner",5,"Arts","AoE","Man"],[199,"Semiramis","Assassin",5,"Buster","AoE","Earth"],[200,"Asagami Fujino","Archer",4,"Buster","ST","Man"],[201,"Anastasia","Caster",5,"Arts","AoE","Man"],[202,"Atalante (Alter)","Berserker",4,"Quick","ST","Earth"],[203,"Avicebron","Caster",3,"Buster","AoE","Man"],[204,"Antonio Salieri","Avenger",3,"Arts","AoE","Earth"],[205,"Ivan the Terrible","Rider",5,"Buster","AoE","Man"],[206,"Achilles","Rider",5,"Quick","AoE","Earth"],[207,"Chiron","Archer",4,"Arts","ST","Sky"],[208,"Sieg","Caster",4,"Arts","AoE","Man"],[209,"Okita Souji (Alter) (Alter Ego)","Alter Ego",5,"Buster","AoE","Man"],[210,"Okada Izo","Assassin",3,"Arts","ST","Man"],[211,"Sakamoto Ryouma (Rider)","Rider",4,"Arts","ST","Man"],[212,"Napoleon","Archer",5,"Buster","AoE","Star"],[213,"Sigurd","Saber",5,"Buster","ST","Earth"],[214,"Valkyrie","Lancer",4,"Quick","AoE","Sky"],[215,"Scáthach-Skadi (Caster)","Caster",5,"Arts","Support","Sky"],[216,"Jeanne d'Arc (Archer)","Archer",5,"Arts","AoE","Man"],[217,"Ibaraki-Douji (Lancer)","Lancer",4,"Buster","ST","Earth"],[218,"Ushiwakamaru (Assassin)","Assassin",4,"Quick","AoE","Man"],[219,"Jeanne d'Arc (Alter) (Berserker)","Berserker",4,"Buster","ST","Man"],[220,"BB (Moon Cancer, 5★)","Moon Cancer",5,"Buster","AoE","Earth"],[221,"Queen Medb (Saber)","Saber",4,"Arts","ST","Earth"],[222,"Mysterious Heroine XX","Foreigner",4,"Arts","ST","Star"],[223,"Diarmuid Ua Duibhne (Saber)","Saber",4,"Quick","ST","Earth"],[224,"Sitonai","Alter Ego",5,"Arts","ST","Sky"],[225,"Shuten-Douji (Caster)","Caster",4,"Buster","ST","Earth"],[226,"Xiang Yu","Berserker",5,"Quick","AoE","Man"],[227,"Prince of Lan Ling","Saber",4,"Arts","Support","Man"],[228,"Qin Liangyu","Lancer",4,"Arts","Support","Man"],[229,"Qin Shi Huang","Ruler",5,"Arts","Support","Man"],[230,"Yu Mei-ren (Assassin)","Assassin",4,"Buster","AoE","Earth"],[231,"Red Hare","Rider",3,"Quick","AoE","Earth"],[232,"Bradamante","Lancer",5,"Quick","AoE","Earth"],[233,"Quetzalcoatl (Samba/Santa)","Ruler",4,"Buster","AoE","Sky"],[234,"Beni-Enma (Saber)","Saber",5,"Arts","ST","Earth"],[235,"Li Shuwen (Assassin)","Assassin",5,"Arts","ST","Man"],[236,"Miyu Edelfelt (Caster)","Caster",4,"Arts","Support","Man"],[237,"Murasaki Shikibu (Caster)","Caster",5,"Arts","AoE","Man"],[238,"Kingprotea (Alter Ego)","Alter Ego",5,"Buster","AoE","Earth"],[239,"Kama (Assassin)","Assassin",5,"Quick","ST","Sky"],[241,"Sima Yi (Reines)","Rider",5,"Arts","Support","Man"],[242,"Astraea","Ruler",4,"Arts","ST","Sky"],[243,"Gray","Assassin",4,"Buster","AoE","Man"],[244,"Jinako Carigiri","Moon Cancer",5,"Arts","AoE","Sky"],[245,"Lakshmi Bai","Saber",4,"Quick","AoE","Man"],[246,"William Tell","Archer",3,"Arts","ST","Man"],[247,"Arjuna (Alter)","Berserker",5,"Buster","AoE","Sky"],[248,"Aśvatthāman","Archer",4,"Buster","ST","Sky"],[249,"Asclepius","Caster",3,"Arts","Support","Earth"],[250,"Demon King Nobunaga","Avenger",5,"Buster","AoE","Earth"],[251,"Mori Nagayoshi","Berserker",3,"Buster","ST","Man"],[252,"Nagao Kagetora","Lancer",4,"Arts","ST","Man"],[253,"Leonardo da Vinci (Rider)","Rider",5,"Arts","AoE","Man"],[254,"Jason","Saber",1,"Arts","AoE","Earth"],[255,"Paris","Archer",2,"Quick","ST","Earth"],[256,"Gareth (Lancer)","Lancer",2,"Buster","ST","Earth"],[257,"Bartholomew Roberts","Rider",1,"Quick","AoE","Man"],[258,"Chen Gong","Caster",2,"Arts","AoE","Man"],[259,"Charlotte Corday (Assassin)","Assassin",1,"Arts","ST","Man"],[260,"Salome","Berserker",2,"Arts","ST","Earth"],[261,"Miyamoto Musashi (Berserker)","Berserker",5,"Arts","AoE","Man"],[262,"Osakabehime (Archer)","Archer",4,"Buster","AoE","Earth"],[263,"Carmilla (Rider)","Rider",4,"Quick","AoE","Earth"],[264,"Katsushika Hokusai (Saber)","Saber",4,"Arts","ST","Man"],[265,"Altria Pendragon (Ruler)","Ruler",5,"Buster","AoE","Sky"],[266,"Mysterious Alter Ego Λ","Lancer",4,"Arts","AoE","Earth"],[267,"Okita Souji (Assassin)","Assassin",4,"Quick","AoE","Man"],[268,"Space Ishtar","Avenger",5,"Quick","AoE","Star"],[269,"Calamity Jane","Archer",4,"Quick","ST","Man"],[270,"Astolfo (Saber)","Saber",5,"Quick","ST","Earth"],[271,"Florence Nightingale (Santa)","Archer",4,"Quick","AoE","Man"],[272,"Super Orion","Archer",5,"Arts","Support","Earth"],[273,"Mandricardo","Rider",3,"Arts","ST","Man"],[274,"Europa","Rider",5,"Buster","AoE","Sky"],[275,"Yang Guifei","Foreigner",5,"Arts","ST","Man"],[276,"Sei Shounagon (Archer)","Archer",5,"Quick","AoE","Man"],[277,"Odysseus","Rider",5,"Arts","AoE","Earth"],[278,"Dioscuri","Saber",5,"Arts","ST","Sky"],[279,"Caenis (Lancer)","Lancer",4,"Buster","AoE","Earth"],[280,"Romulus=Quirinus","Lancer",5,"Buster","AoE","Sky"],[281,"Voyager","Foreigner",5,"Quick","AoE","Star"],[282,"Kijyo Koyo","Berserker",4,"Buster","ST","Earth"],[283,"Utsumi Erice (Lancer)","Lancer",4,"Arts","AoE","Man"],[284,"Altria Caster (Caster)","Caster",5,"Arts","Support","Star"],[285,"Sessyoin Kiara (Moon Cancer)","Moon Cancer",5,"Arts","AoE","Earth"],[286,"Illyasviel von Einzbern (Archer)","Archer",4,"Quick","AoE","Man"],[287,"Brynhild (Berserker)","Berserker",4,"Buster","AoE","Sky"],[288,"Yu Mei-ren (Lancer)","Lancer",4,"Quick","ST","Earth"],[289,"Abigail Williams (Summer)","Foreigner",5,"Buster","AoE","Earth"],[290,"Tomoe Gozen (Saber)","Saber",4,"Arts","AoE","Earth"],[291,"Murasaki Shikibu (Rider)","Rider",4,"Arts","ST","Man"],[292,"Himiko","Ruler",5,"Buster","Support","Earth"],[293,"Saito Hajime","Saber",4,"Arts","ST","Man"],[294,"Oda Nobukatsu","Archer",1,"Buster","Support","Man"],[295,"Van Gogh","Foreigner",5,"Arts","Support","Earth"],[296,"Nemo","Rider",5,"Arts","ST","Sky"],[297,"Ashiya Douman","Alter Ego",5,"Quick","AoE","Earth"],[298,"Watanabe-no-Tsuna","Saber",4,"Buster","ST","Man"],[299,"Ibuki-Douji (Saber)","Saber",5,"Buster","AoE","Sky"],[300,"Vritra","Lancer",5,"Arts","AoE","Sky"],[301,"Karna (Santa)","Saber",4,"Quick","ST","Sky"],[302,"Senji Muramasa","Saber",5,"Arts","AoE","Man"],[303,"Taira-no-Kagekiyo","Avenger",5,"Quick","ST","Earth"],[304,"Kiichi Hogen","Assassin",4,"Quick","AoE","Earth"],[305,"Amor (Caren)","Ruler",5,"Quick","AoE","Sky"],[306,"Galatea","Berserker",5,"Arts","ST","Earth"],[307,"Miss Crane","Caster",5,"Arts","Support","Earth"],[308,"Mysterious Idol X (Alter)","Foreigner",4,"Quick","AoE","Star"],[309,"Morgan","Berserker",5,"Buster","AoE","Earth"],[310,"Barghest","Saber",4,"Buster","AoE","Earth"],[311,"Baobhan Sith","Archer",4,"Quick","ST","Earth"],[312,"Mélusine (Lancer)","Lancer",5,"Buster","AoE","Earth"],[313,"Percival","Lancer",4,"Arts","AoE","Earth"],[314,"Koyanskaya of Light","Assassin",5,"Buster","AoE","Beast"],[315,"Habetrot (Rider)","Rider",4,"Arts","AoE","Earth"],[316,"Oberon","Pretender",5,"Buster","AoE","Earth"],[317,"Okita Souji (Alter) (Saber)","Saber",5,"Quick","AoE","Man"],[318,"Anastasia & Viy","Archer",4,"Arts","ST","Man"],[319,"Charlotte Corday (Caster)","Caster",4,"Arts","ST","Man"],[320,"Leonardo da Vinci (Ruler)","Ruler",4,"Buster","ST","Man"],[321,"Kama (Avenger)","Avenger",5,"Arts","AoE","Sky"],[322,"Caenis (Rider)","Rider",4,"Buster","ST","Earth"],[323,"Sei Shounagon (Berserker)","Berserker",4,"Quick","ST","Man"],[324,"Jacques de Molay (Foreigner)","Foreigner",5,"Quick","AoE","Earth"],[325,"Zenobia","Archer",4,"Arts","AoE","Man"],[326,"Elisabeth Báthory (Cinderella)","Rider",4,"Buster","ST","Man"],[327,"Izumo-no-Okuni","Caster",5,"Quick","ST","Man"],[328,"Mysterious Ranmaru X","Avenger",4,"Arts","AoE","Star"],[329,"Sakamoto Ryouma (Lancer)","Lancer",5,"Arts","AoE","Man"],[330,"Martha (Santa)","Caster",4,"Quick","Support","Man"],[331,"Taigong Wang","Rider",5,"Quick","AoE","Earth"],[332,"Dobrynya Nikitich (Rider)","Rider",4,"Buster","AoE","Earth"],[334,"Koyanskaya of Dark","Foreigner",5,"Buster","AoE","Beast"],[335,"Hephaistíon","Pretender",4,"Arts","ST","Earth"],[336,"Manannán mac Lir (Bazett)","Alter Ego",5,"Quick","Support","Sky"],[337,"Hai Bà Trưng","Saber",5,"Arts","ST","Man"],[338,"Taisui Xingjun","Alter Ego",4,"Arts","AoE","Earth"],[339,"Super Bunyan","Alter Ego",5,"Buster","ST","Earth"],[340,"Daikokuten","Caster",4,"Quick","AoE","Sky"],[341,"Mary Anning","Lancer",1,"Arts","AoE","Man"],[342,"Kōnstantînos XI","Rider",5,"Buster","Support","Man"],[343,"Charlemagne","Saber",5,"Quick","AoE","Star"],[344,"Roland","Saber",4,"Buster","ST","Earth"],[345,"Kriemhild (Berserker)","Berserker",4,"Arts","ST","Earth"],[346,"James Moriarty (Ruler)","Ruler",5,"Arts","AoE","Man"],[347,"Don Quixote","Lancer",4,"Quick","ST","Earth"],[348,"Zhang Jue","Caster",3,"Quick","AoE","Man"],[349,"Kyokutei Bakin","Rider",5,"Arts","AoE","Man"],[350,"Minamoto-no-Tametomo","Archer",5,"Buster","AoE","Man"],[351,"Archetype: Earth","Moon Cancer",5,"Buster","AoE","Star"],[352,"Xu Fu (Alter Ego)","Alter Ego",3,"Arts","Support","Man"],[353,"Lady Avalon","Pretender",5,"Arts","Support","Earth"],[354,"Gareth (Saber)","Saber",4,"Buster","AoE","Earth"],[355,"Ibuki-Douji (Berserker)","Berserker",5,"Arts","AoE","Sky"],[356,"Utsumi Erice (Avenger)","Avenger",4,"Arts","ST","Man"],[357,"Scáthach-Skadi (Ruler)","Ruler",5,"Quick","AoE","Sky"],[358,"Wu Zetian (Caster)","Caster",4,"Buster","AoE","Man"],[359,"Thrúd","Assassin",4,"Arts","AoE","Sky"],[360,"Hildr","Assassin",4,"Arts","AoE","Sky"],[361,"Ortlinde","Assassin",4,"Arts","AoE","Sky"],[362,"Sen-no-Rikyu","Berserker",5,"Quick","AoE","Man"],[363,"Yamanami Keisuke","Saber",4,"Arts","Support","Man"],[364,"Iyo","Ruler",4,"Arts","AoE","Earth"],[365,"Huyan Zhuo (Assassin)","Assassin",5,"Quick","AoE","Man"],[366,"Huang Feihu","Rider",4,"Buster","ST","Earth"],[367,"Nine-Tattoo Dragon Elisa","Pretender",4,"Buster","AoE","Man"],[368,"Britomart","Lancer",5,"Quick","AoE","Earth"],[369,"Kotomine Kirei","Alter Ego",5,"Arts","AoE","Earth"],[370,"Nitocris (Alter)","Avenger",5,"Arts","AoE","Sky"],[371,"Tezcatlipoca","Assassin",5,"Arts","AoE","Sky"],[372,"Tenochtitlan (Pretender)","Pretender",4,"Quick","AoE","Earth"],[373,"Kukulcan","Foreigner",5,"Buster","AoE","Star"],[374,"Pope Johanna","Ruler",5,"Arts","AoE","Earth"],[375,"Takasugi Shinsaku","Archer",5,"Quick","AoE","Man"],[376,"Larva/Tiamat (Alter Ego)","Alter Ego",5,"Buster","AoE","Star"],[377,"Sodom's Beast/Draco","Beast",5,"Arts","ST","Beast"],[378,"Locusta","Assassin",4,"Arts","ST","Man"],[379,"Setanta","Saber",4,"Quick","ST","Earth"],[380,"Kashin Koji","Assassin",5,"Quick","AoE","Earth"],[381,"Bhima","Lancer",5,"Buster","ST","Sky"],[382,"Duryodhana","Berserker",4,"Arts","AoE","Earth"],[383,"Durga","Archer",5,"Arts","AoE","Sky"],[384,"Medusa (Saber)","Saber",5,"Quick","ST","Earth"],[385,"Aesc the Rain Witch","Caster",5,"Buster","AoE","Earth"],[386,"Altria Caster (Berserker)","Berserker",5,"Arts","ST","Star"],[387,"Suzuka Gozen (Summer Vacation)","Rider",4,"Quick","AoE","Sky"],[388,"Chloe von Einzbern (Avenger)","Avenger",4,"Quick","ST","Man"],[389,"Cnoc na Riabh Yaraan-doo","Foreigner",4,"Arts","AoE","Earth"],[390,"Mélusine (Ruler)","Ruler",5,"Arts","AoE","Earth"],[391,"UDK-Barghest","Archer",4,"Arts","ST","Earth"],[392,"Cait Cú Cerpriestess","Pretender",4,"Buster","AoE","Earth"],[393,"Wandjina","Foreigner",5,"Quick","ST","Sky"],[394,"Ptolemaîos","Archer",5,"Arts","AoE","Man"],[395,"Sugitani Zenjubou","Archer",3,"Buster","ST","Man"],[396,"Theseus","Saber",3,"Arts","ST","Earth"],[397,"Takeda Harunobu","Rider",5,"Buster","AoE","Man"],[398,"Nagakura Shinpachi","Berserker",4,"Buster","ST","Man"],[399,"Saika Magoichi","Archer",4,"Quick","ST","Man"],[400,"Uesugi Kenshin","Ruler",5,"Arts","ST","Earth"],[401,"Nemo (Santa)","Rider",4,"Arts","AoE","Sky"],[402,"Yamato Takeru","Saber",5,"Arts","AoE","Sky"],[403,"Minamoto-no-Raikou/Ushi Gozen","Avenger",5,"Quick","AoE","Sky"],[404,"Yui Shousetsu","Caster",4,"Arts","Support","Man"],[405,"Miyamoto Iori","Saber",4,"Buster","ST","Man"],[406,"Andromeda","Rider",5,"Quick","AoE","Earth"],[407,"Marie Antoinette (Alter)","Avenger",5,"Arts","AoE","Earth"],[408,"Hassan of the Shining Star","Assassin",4,"Arts","AoE","Man"],[409,"The Count of Monte Cristo","Avenger",5,"Quick","ST","Earth"],[410,"Alessandro di Cagliostro","Pretender",4,"Arts","AoE","Man"],[413,"Aozaki Aoko","Foreigner",5,"Arts","Support","Man"],[414,"Shizuki Soujuurou","Berserker",4,"Buster","ST","Man"],[415,"Kuonji Alice","Caster",5,"Quick","AoE","Man"],[416,"Hibiki & Chikagi","Alter Ego",5,"Quick","AoE","Man"],[417,"Ereshkigal (Beast)","Beast",5,"Arts","AoE","Beast"],[418,"Mysterious Executor C.I.E.L","Moon Cancer",5,"Buster","ST","Man"],[419,"Dobrynya Nikitich (Lancer)","Lancer",4,"Arts","ST","Earth"],[420,"Xu Fu (Avenger)","Avenger",4,"Buster","ST","Man"],[421,"BB Dubai","Moon Cancer",5,"Arts","Support","Star"],[422,"Tenochtitlan (Moon Cancer)","Moon Cancer",4,"Quick","AoE","Earth"],[423,"Mysterious Heroine XX (Alter)","Foreigner",4,"Buster","ST","Star"],[424,"Kishinami Hakuno (Moon Cancer, 4★)","Moon Cancer",4,"Buster","AoE","Man"],[425,"Kishinami Hakuno (Moon Cancer, 4★)","Moon Cancer",4,"Buster","AoE","Man"],[426,"Kazuradrop","Alter Ego",5,"Quick","AoE","Earth"],[432,"Richard I","Saber",5,"Buster","AoE","Man"]], seen = {};
+    raw.forEach(r => { seen[r[1]] = (seen[r[1]] || 0) + 1; });
+    raw.forEach(([no, name, cls, rar, card, np, attr]) => {
+      const label = seen[name] > 1 ? `${name} · No.${no}` : name;
+      SV.set(no, { no, name: label, cls, rar, card, np, attr, key: norm(label), sub: `${rar}★ ${cls}` });
+    });
+  })();
+  const CE = new Map();
+  [[1,"Tenacity",1,"Gacha"],[2,"Meditation",1,"Gacha"],[3,"Technique",1,"Gacha"],[4,"Preemption",1,"Gacha"],[5,"Destruction",1,"Gacha"],[6,"Flash",2,"Gacha"],[7,"Opportunity",2,"Gacha"],[8,"Fruitful",2,"Gacha"],[9,"Concentration",2,"Gacha"],[10,"Divine Oracle",2,"Gacha"],[11,"Azoth Blade",3,"Gacha"],[12,"False Attendant's Writings",3,"Gacha"],[13,"The Azure Black Keys",3,"Gacha"],[14,"The Verdant Black Keys",3,"Gacha"],[15,"The Crimson Black Keys",3,"Gacha"],[16,"Rin's Pendant",3,"Gacha"],[17,"Spell Tome",3,"Gacha"],[18,"Dragon's Meridian",3,"Gacha"],[19,"Sorcery Ore",3,"Gacha"],[20,"Dragonkin",3,"Gacha"],[21,"Iron-Willed Training",4,"Gacha"],[22,"Primeval Curse",4,"Gacha"],[23,"Projection",4,"Gacha"],[24,"Gandr",4,"Gacha"],[25,"Verdant Sound of Destruction",4,"Gacha"],[26,"Gem Magecraft: Antumbra",4,"Gacha"],[27,"Be Elegant",4,"Gacha"],[28,"The Imaginary Element",4,"Gacha"],[29,"Divine Banquet",4,"Gacha"],[30,"Angel's Song",4,"Gacha"],[31,"Formal Craft",5,"Gacha"],[32,"Imaginary Around",5,"Gacha"],[33,"Limited/Zero Over",5,"Gacha"],[34,"Kaleidoscope",5,"Gacha"],[35,"Heaven's Feel",5,"Gacha"],[36,"Beginning of the Journey",4,"Campaign"],[37,"Parted Sea",3,"Gacha"],[38,"Seal Designation Enforcer",4,"Gacha"],[39,"Holy Shroud of Magdalene",4,"Gacha"],[40,"Prisma Cosmos",5,"Gacha"],[41,"Nightless Rose",5,"Event"],[42,"Mooncell Automaton",3,"Gacha"],[43,"Moony Jewel",4,"Event"],[44,"Moon Goddess' Bath",5,"Event"],[45,"Moonlight Fest",5,"Event"],[46,"Runestone",3,"Gacha"],[47,"With One Strike",4,"Gacha"],[48,"The Black Grail",5,"Gacha"],[49,"Jack-o'-lantern",3,"Event"],[50,"Trick or Treat",3,"Event"],[51,"Halloween Arrangement",4,"Event"],[52,"Halloween Princess",5,"Event"],[53,"Little Halloween Devil",5,"Event"],[54,"Maid in Halloween",5,"Event"],[55,"Anchors Aweigh",3,"Gacha"],[56,"Code Cast",4,"Gacha"],[57,"Victor of the Moon",5,"Gacha"],[58,"Another Ending",5,"Gacha"],[59,"Fate GUDAGUDA Order",3,"Event"],[60,"After-Party Order!",4,"Event"],[61,"GUDA-O",5,"Event"],[62,"GUDAGUDA Poster Girl",5,"Event"],[65,"Demon Boar",3,"Gacha"],[66,"Knight's Dignity",4,"Gacha"],[67,"A Fragment of 2030",5,"Gacha"],[68,"Lightning Reindeer",3,"Event"],[69,"March of the Saint",4,"Event"],[70,"Present for My Master",5,"Event"],[71,"Holy Night Sign",5,"Event"],[72,"Clock Tower",3,"Gacha"],[73,"Necromancy",4,"Gacha"],[74,"Awakened Will",4,"Gacha"],[75,"500-Year Obsession",5,"Gacha"],[76,"Peacefulness of 2016",3,"Event"],[77,"Heroic New Year",4,"Event"],[78,"Law of the Jungle",3,"Event"],[79,"Grand New Year",5,"Event"],[80,"Mona Lisa",5,"Shop"],[81,"Happy x3 Order",4,"Campaign"],[82,"Purely Bloom",5,"Event"],[83,"Star of Altria",5,"Event"],[84,"Trueshot",3,"Event"],[85,"Mikotto! Bride Training",4,"Event"],[86,"The Crimson Land of Shadows",5,"Event"],[89,"Ryudoji Temple",3,"Gacha"],[90,"Mana Gauge",3,"Gacha"],[91,"Elixir of Love",3,"Gacha"],[92,"Storch Ritter",3,"Gacha"],[93,"Hermitage",3,"Gacha"],[94,"Motored Cuirassier",3,"Gacha"],[95,"Stuffed Lion",3,"Gacha"],[96,"Lugh's Halo",3,"Gacha"],[97,"Vessel of the Saint",5,"Gacha"],[98,"Golden Millennium Tree",4,"Gacha"],[99,"Heroic Portrait: Mash Kyrielight",4,"Campaign"],[100,"Heroic Portrait: Altria Pendragon",4,"Campaign"],[101,"Heroic Portrait: Jeanne d'Arc",4,"Campaign"],[102,"Heroic Portrait: Altera",4,"Campaign"],[103,"Heroic Portrait: Arjuna",4,"Campaign"],[104,"Heroic Portrait: Scáthach",4,"Campaign"],[105,"Heroic Portrait: Ushiwakamaru",4,"Campaign"],[106,"Heroic Portrait: Henry Jekyll & Hyde",4,"Campaign"],[107,"Heroic Portrait: Mephistopheles",4,"Campaign"],[108,"Heroic Portrait: Darius III",4,"Campaign"],[109,"Valentine Dojo of Tears",3,"Event"],[110,"Kitchen☆Patissiere",4,"Event"],[111,"Street Choco-Maid",5,"Event"],[112,"Melty Sweetheart",5,"Event"],[154,"Decapitating Bunny 2016",5,"Event"],[155,"Mature Gentleman",5,"Event"],[156,"Grand Puppeteer",5,"Event"],[157,"Threefold Barrier",5,"Event"],[158,"Vivid Dance of Fists",4,"Event"],[159,"Mystic Eyes of Distortion",4,"Event"],[160,"Summer's Precognition",4,"Event"],[161,"Chorus",4,"Event"],[162,"Sprinter",3,"Event"],[163,"Repeat Magic",3,"Event"],[165,"Kiss Your Hand",5,"Event"],[166,"Teacher and I",5,"Event"],[167,"Versus",5,"Event"],[168,"Beasts Under the Moon",4,"Event"],[169,"Glass Full Sweet Time",4,"Event"],[170,"Salon de Marie",3,"Event"],[171,"Prince of Slayer",3,"Event"],[172,"Noisy Obsession",4,"Event"],[173,"Last Encore",4,"Campaign"],[174,"[Heaven's Feel]",4,"Campaign"],[175,"Ideal Holy King",5,"Gacha"],[176,"Record Holder",4,"Gacha"],[177,"Beast of Billows",3,"Gacha"],[178,"Personal Training",5,"Shop"],[179,"The Scholars of Chaldea",5,"Event"],[180,"Maiden Leading Chaldea",5,"Event"],[181,"The Merciless One",5,"Event"],[182,"Art of the Poisonous Snake",4,"Gacha"],[183,"Art of Death",4,"Gacha"],[184,"Gentle Affection",4,"Gacha"],[185,"Volumen Hydrargyrum",5,"Gacha"],[186,"Innocent Maiden",4,"Gacha"],[187,"Self Geas Scroll",3,"Gacha"],[188,"Before Awakening",5,"Gacha"],[189,"His Rightful Place",5,"Event"],[211,"The Wandering Tales of Shana-oh",5,"Event"],[212,"Golden Captures the Carp",5,"Event"],[213,"A Fox Night's Dream",5,"Event"],[214,"Burning Tale of Love",4,"Event"],[215,"Reciting the Subscription List",3,"Event"],[226,"Go West!!",5,"Event"],[227,"The Classic Three Great Heroes",5,"Event"],[228,"True Samadhi Fire",4,"Event"],[229,"All Three Together",3,"Event"],[240,"Divine Princess of the Storm",5,"Event"],[241,"Ox-Demon King",5,"Event"],[242,"Personal Lesson",5,"Shop"],[243,"Bronze-Link Manipulator",3,"Gacha"],[244,"Ath nGabla",3,"Gacha"],[245,"Bygone Dream",3,"Gacha"],[246,"Extremely Spicy Mapo Tofu",3,"Gacha"],[247,"Jeweled Sword Zelretch",3,"Gacha"],[258,"Dumplings Over Flowers",5,"Event"],[259,"Faithful Companions",4,"Event"],[260,"Hidden Sword: Pheasant Reversal",3,"Event"],[261,"Golden Sumo: Boulder Tournament",5,"Event"],[262,"Hot Spring Under the Moon",5,"Event"],[263,"Origin Bullet",5,"Gacha"],[264,"Covering Fire",4,"Gacha"],[265,"Battle of Camlann",3,"Gacha"],[276,"Anniversary Heroines",4,"Campaign"],[277,"Leisure Stroll",5,"Event"],[278,"Partake with the King",5,"Event"],[279,"Goldfish Scooping",4,"Event"],[280,"Fire Flower",3,"Event"],[291,"Pirates Party!",5,"Event"],[292,"Summertime Mistress",5,"Event"],[293,"Twilight Memory",4,"Event"],[294,"Shiny Goddess",3,"Event"],[295,"Knights of Marines",5,"Event"],[296,"Chaldea Lifesavers",5,"Event"],[297,"Meat Wars",4,"Event"],[298,"Shaved Ice (Void's Dust Flavor)",3,"Event"],[309,"Magical Girl of Sapphire",5,"Event"],[310,"Kill on Sight",4,"Event"],[311,"Zunga Zunga!",3,"Event"],[312,"Kaleid Ruby",4,"Event"],[313,"Kaleid Sapphire",4,"Event"],[325,"Glory Is With Me",5,"Event"],[326,"Original Legion",4,"Event"],[327,"Howl at the Moon",3,"Event"],[328,"Princess of the White Rose",5,"Event"],[329,"Joint Recital",5,"Event"],[330,"Chaldea Lunchtime",5,"Shop"],[331,"Fragarach",3,"Gacha"],[332,"Inverted Moon of the Heavens",3,"Gacha"],[333,"Hydra Dagger",3,"Gacha"],[344,"Dangerous Beast",5,"Event"],[345,"Witch Under the Moonlight",4,"Event"],[346,"Count Romani Archaman's Hospitality",3,"Event"],[347,"Hero Elly's Adventure",5,"Event"],[348,"Wizard & Priest",4,"Event"],[349,"Mata Hari's Tavern",3,"Event"],[360,"Fate/EXTELLA",4,"Campaign"],[361,"Spiritron Portrait: Nero Claudius",4,"Campaign"],[362,"Spiritron Portrait: Nameless",4,"Campaign"],[363,"Spiritron Portrait: Tamamo-no-Mae",4,"Campaign"],[364,"Spiritron Portrait: Karna",4,"Campaign"],[365,"Spiritron Portrait: Altera",4,"Campaign"],[366,"Spiritron Portrait: Gilgamesh",4,"Campaign"],[387,"A Moment of Tranquility",5,"Event"],[388,"Reading on the Holy Night",4,"Event"],[389,"Saint's Invitation",3,"Event"],[390,"Holy Night Supper",5,"Event"],[399,"First Order",4,"Campaign"],[400,"Devilish Bodhisattva",5,"Gacha"],[401,"Room Guard",4,"Gacha"],[402,"Seeker of Miracles",3,"Gacha"],[412,"First Sunrise",5,"Event"],[413,"Izome, the First Arrow",4,"Event"],[414,"Over the Cuckoo's Nest",3,"Event"],[415,"Cheers to 2017",4,"Campaign"],[418,"Reality Marble",3,"Gacha"],[419,"Potion of Youth",3,"Gacha"],[420,"Collection of Mysterious Masks",3,"Gacha"],[421,"Cute Orangette",5,"Event"],[422,"Chocolatier",5,"Event"],[423,"Chocolate Angel",4,"Event"],[424,"Bitter Black",4,"Event"],[425,"Blissful Time",3,"Event"],[426,"Arrogance of a Victor",3,"Event"],[427,"Sweet Crystal",5,"Event"],[428,"Fondant au Chocolat",5,"Event"],[545,"Freelancer",3,"Gacha"],[550,"Conversation on the Hot Sands",5,"Event"],[551,"The Dantès Files: The Case of the Spring Jaunt",5,"Event"],[552,"As You Wish",5,"Event"],[553,"Café Camelot",4,"Event"],[554,"Outrage",4,"Event"],[555,"Operation Fianna",4,"Event"],[556,"Quatre Feuilles",3,"Event"],[557,"Neverland",3,"Event"],[558,"La Siesta",3,"Event"],[560,"Demon King of the Sixth Heaven",5,"Event"],[561,"Fortress of the Sun",5,"Event"],[562,"Wolves of Mibu",5,"Event"],[563,"A Stroll in the Spring Breeze",4,"Event"],[564,"The Flower of High Society",3,"Event"],[569,"Conquering the Great Sea of Stars",5,"Event"],[570,"One Summer",5,"Event"],[571,"Tsukimihara Student Council",4,"Event"],[572,"Premonition of Beginnings",4,"Event"],[573,"The Cage",3,"Event"],[580,"Ruined Church",3,"Gacha"],[581,"Marugoshi Shinji",3,"Gacha"],[582,"Atlas Institute",3,"Gacha"],[583,"Fate/Apocrypha",4,"Campaign"],[584,"FGO THE STAGE",4,"Campaign"],[585,"Phantasmal Species",3,"Gacha"],[590,"Chaldea Anniversary",5,"Event"],[591,"Afternoon Party",4,"Event"],[592,"Starlight Festival",3,"Event"],[593,"Learning with Manga! FGO",4,"Event"],[594,"Formal Portrait: Mash Kyrielight",4,"Campaign"],[595,"Formal Portrait: Altria Pendragon · No.595",4,"Campaign"],[596,"Formal Portrait: Altera",4,"Campaign"],[597,"Formal Portrait: Mordred",4,"Campaign"],[598,"Formal Portrait: Arthur Pendragon",4,"Campaign"],[599,"Formal Portrait: Nero Claudius",4,"Campaign"],[600,"Formal Portrait: Chevalier d'Eon",4,"Campaign"],[601,"Formal Portrait: Lancelot",4,"Campaign"],[602,"Formal Portrait: Gaius Julius Caesar",4,"Campaign"],[603,"Formal Portrait: Bedivere",4,"Campaign"],[604,"Formal Portrait: Arjuna",4,"Campaign"],[605,"Formal Portrait: Ishtar",4,"Campaign"],[606,"Formal Portrait: Emiya",4,"Campaign"],[607,"Formal Portrait: Atalante",4,"Campaign"],[608,"Formal Portrait: Euryale",4,"Campaign"],[609,"Formal Portrait: Scáthach",4,"Campaign"],[610,"Formal Portrait: Karna",4,"Campaign"],[611,"Formal Portrait: Altria Pendragon · No.611",4,"Campaign"],[612,"Formal Portrait: Altria Pendragon · No.612",4,"Campaign"],[613,"Formal Portrait: Romulus",4,"Campaign"],[614,"Formal Portrait: Medusa",4,"Campaign"],[615,"Formal Portrait: Jaguar Warrior",4,"Campaign"],[616,"Formal Portrait: Queen Medb",4,"Campaign"],[617,"Formal Portrait: Quetzalcoatl",4,"Campaign"],[618,"Formal Portrait: Marie Antoinette",4,"Campaign"],[619,"Formal Portrait: Ushiwakamaru",4,"Campaign"],[620,"Formal Portrait: Boudica",4,"Campaign"],[621,"Formal Portrait: Edward Teach",4,"Campaign"],[622,"Formal Portrait: Leonardo da Vinci",4,"Campaign"],[623,"Formal Portrait: Nitocris",4,"Campaign"],[624,"Formal Portrait: Gilgamesh",4,"Campaign"],[625,"Formal Portrait: Cú Chulainn · No.625",4,"Campaign"],[626,"Formal Portrait: Mephistopheles",4,"Campaign"],[627,"Formal Portrait: Wolfgang Amadeus Mozart",4,"Campaign"],[628,"Formal Portrait: Assassin of the Nightless City",4,"Campaign"],[629,"Formal Portrait: Hassan of the Cursed Arm",4,"Campaign"],[630,"Formal Portrait: Vlad III",4,"Campaign"],[631,"Formal Portrait: Sakata Kintoki",4,"Campaign"],[632,"Formal Portrait: Florence Nightingale",4,"Campaign"],[633,"Formal Portrait: Cú Chulainn · No.633",4,"Campaign"],[634,"Formal Portrait: Heracles",4,"Campaign"],[635,"Formal Portrait: Frankenstein",4,"Campaign"],[636,"Formal Portrait: Berserker of El Dorado",4,"Campaign"],[637,"Formal Portrait: Kiyohime",4,"Campaign"],[638,"Formal Portrait: Asterios",4,"Campaign"],[639,"Formal Portrait: Jeanne d'Arc",4,"Campaign"],[640,"Formal Portrait: Sherlock Holmes",4,"Campaign"],[643,"Summer Little",5,"Event"],[644,"White Cruising",4,"Event"],[645,"Sugar Vacation",3,"Event"],[646,"Seaside Luxury",5,"Event"],[652,"Midsummer Moment",5,"Event"],[653,"King, Joker, Jack",4,"Event"],[654,"Chaldea Beach Volleyball",3,"Event"],[655,"Dive to Blue",5,"Event"],[659,"Prisma☆Illya Oath Under The Snow",4,"Campaign"],[660,"Battle Olympia",5,"Event"],[661,"Divine Three-Legged Race",5,"Event"],[662,"Cheer for Master",5,"Event"],[663,"Food Colosseum",4,"Event"],[664,"Muscle Cavalier",3,"Event"],[665,"Replica; Agateram",4,"Campaign"],[666,"At Wish's End",5,"Event"],[667,"Comrades",4,"Event"],[668,"Trace of a Dream",3,"Event"],[670,"Heroic Costume: Medusa",4,"Campaign"],[671,"Heroic Costume: Leonardo da Vinci",4,"Campaign"],[672,"Heroic Costume: Jeanne d'Arc",4,"Campaign"],[673,"Heroic Costume: Nero Claudius",4,"Campaign"],[674,"Divine Construct",3,"Gacha"],[680,"Trick or Treatment",5,"Event"],[681,"Phantom Night",4,"Event"],[682,"From Wonderland",3,"Event"],[683,"Aerial Drive",5,"Event"],[684,"Golden Wings",4,"Event"],[685,"Nostalgic Form",3,"Event"],[689,"Pray Upon the Sword, Wish Upon Life",4,"Campaign"],[690,"FGO VR Mash Kyrielight",4,"Campaign"],[691,"Soul Eater",3,"Gacha"],[696,"Starry Nights",5,"Event"],[697,"Party Time",4,"Event"],[698,"Snow Pirates",3,"Event"],[699,"Merry Sheep",5,"Event"],[702,"MOONLIGHT/LOSTROOM",4,"Campaign"],[703,"Himuro no Tenchi - The Seven Strongest Greats Arc -",4,"Campaign"],[704,"New Beginnings",5,"Event"],[705,"Avalon Celebrates",4,"Event"],[706,"Happiness Is Like a Warm Puppy",3,"Event"],[707,"Irohanihoheto",4,"Campaign"],[710,"Manga Adaptation Project",4,"Campaign"],[711,"An Oni in Human Clothing",5,"Event"],[712,"Fate/EXTRA",4,"Campaign"],[713,"Pharaoh Xocolatl",5,"Event"],[714,"First Valentine's",4,"Event"],[715,"Witches' Kitchen",3,"Event"],[716,"Sweet Days",5,"Event"],[763,"Pharaoh’s Great Winter Celebration",4,"Campaign"],[764,"The Star of Camelot",5,"Event"],[765,"The Dantès Files: Undercover in a Foreign Land",5,"Event"],[766,"Gateau au Chocolat",4,"Event"],[767,"Golden and Sun, the Gamblers",4,"Event"],[768,"Chaldea Special Investigation Unit",4,"Event"],[769,"Welcome, Our Customer",3,"Event"],[770,"Musketeers",3,"Event"],[771,"The Men After the Rain",3,"Event"],[772,"Can Spring Be Far Behind?",4,"Campaign"],[773,"Under the Sun",5,"Gacha"],[774,"The Final Narrator",4,"Gacha"],[775,"Light of Wisdom",3,"Gacha"],[776,"Heretical Yaga",4,"Gacha"],[777,"Combat",1,"Gacha"],[778,"Linkage",1,"Gacha"],[779,"Barrier",1,"Gacha"],[780,"Awakening",1,"Gacha"],[781,"Starvation",1,"Gacha"],[782,"Mercy",2,"Gacha"],[783,"Prosperity",2,"Gacha"],[784,"Deception",2,"Gacha"],[785,"Synchronization",2,"Gacha"],[786,"Gloom",2,"Gacha"],[792,"Distant Pilgrimage",5,"Event"],[793,"Moment of Bliss",4,"Event"],[794,"Away We Go!",3,"Event"],[795,"An Afternoon at the Fortress",5,"Event"],[796,"At Trifas",5,"Event"],[801,"Escape from the Baker Street",4,"Campaign"],[802,"Fate/EXTELLA LINK",4,"Campaign"],[803,"Imperial Capital Grail War",5,"Event"],[804,"Sakamoto Detective Agency",4,"Event"],[805,"Fang-Sharp Shadow Blade",3,"Event"],[806,"The Sailor in White",5,"Event"],[813,"Child of Atlas",5,"Gacha"],[814,"Cleaner",4,"Gacha"],[815,"Sakura's Special Bento",3,"Gacha"],[816,"Girl Amidst the Flowers",4,"Gacha"],[819,"Travel Portrait: Archer of Inferno",4,"Campaign"],[820,"Travel Portrait: Asterios",4,"Campaign"],[821,"Travel Portrait: Atalante",4,"Campaign"],[822,"Travel Portrait: Abigail Williams",4,"Campaign"],[823,"Travel Portrait: Wolfgang Amadeus Mozart",4,"Campaign"],[824,"Travel Portrait: Arjuna",4,"Campaign"],[825,"Travel Portrait: Altera",4,"Campaign"],[826,"Travel Portrait: Altria Pendragon · No.826",4,"Campaign"],[827,"Travel Portrait: Altria Pendragon · No.827",4,"Campaign"],[828,"Travel Portrait: Antonio Salieri",4,"Campaign"],[829,"Travel Portrait: Ereshkigal",4,"Campaign"],[830,"Travel Portrait: Caster of Okeanos",4,"Campaign"],[831,"Travel Portrait: Osakabehime",4,"Campaign"],[832,"Travel Portrait: Carmilla",4,"Campaign"],[833,"Travel Portrait: Katsushika Hokusai",4,"Campaign"],[834,"Travel Portrait: Karna",4,"Campaign"],[835,"Travel Portrait: Kiyohime",4,"Campaign"],[836,"Travel Portrait: Xuanzang Sanzang",4,"Campaign"],[837,"Travel Portrait: Sasaki Kojirou",4,"Campaign"],[838,"Travel Portrait: Charles-Henri Sanson",4,"Campaign"],[839,"Travel Portrait: Sherlock Holmes",4,"Campaign"],[840,"Travel Portrait: Assassin of Shinjuku",4,"Campaign"],[841,"Travel Portrait: Miyamoto Musashi",4,"Campaign"],[842,"Travel Portrait: Scáthach",4,"Campaign"],[843,"Travel Portrait: Suzuka Gozen",4,"Campaign"],[844,"Travel Portrait: David",4,"Campaign"],[845,"Travel Portrait: Tamamo-no-Mae",4,"Campaign"],[846,"Travel Portrait: Florence Nightingale",4,"Campaign"],[847,"Travel Portrait: Mysterious Heroine X",4,"Campaign"],[848,"Travel Portrait: Nezha",4,"Campaign"],[849,"Travel Portrait: Nero Claudius",4,"Campaign"],[850,"Travel Portrait: Brynhild",4,"Campaign"],[851,"Travel Portrait: Paul Bunyan",4,"Campaign"],[852,"Travel Portrait: Merlin",4,"Campaign"],[853,"Travel Portrait: Mash Kyrielight",4,"Campaign"],[854,"Travel Portrait: Martha",4,"Campaign"],[855,"Travel Portrait: Minamoto-no-Raikou",4,"Campaign"],[856,"Travel Portrait: Yagyu Tajima-no-kami Munenori",4,"Campaign"],[857,"Travel Portrait: Leonardo da Vinci",4,"Campaign"],[858,"A Tale of Love and Hope",5,"Event"],[859,"Greatest Journey",4,"Event"],[860,"Team Phoenix",3,"Event"],[861,"Be Graceful",5,"Shop"],[863,"Fate/Grand Order Arcade",4,"Campaign"],[864,"Singularity F",4,"Campaign"],[865,"Emerald Float",5,"Event"],[866,"Hero on the Beach",5,"Event"],[867,"Raging Wind",4,"Event"],[868,"Sunset Jam",4,"Event"],[869,"All-Night Fever",3,"Event"],[870,"Writer's High",3,"Event"],[871,"Painting Summer",5,"Event"],[872,"Foxy Lady",5,"Event"],[873,"Water Shine",5,"Event"],[874,"The Melancholy of a Dramatic Demon",4,"Event"],[875,"Little little bullet",4,"Event"],[876,"Our Round Table",4,"Event"],[877,"Curry × Rice",4,"Event"],[878,"Martha's Built Upper",4,"Event"],[879,"Giant Babbage",4,"Event"],[880,"Mama's Ears",4,"Event"],[881,"We Never Summon: Bokushou",4,"Event"],[882,"Ms. Anastasia Loves Ramen Noodles",4,"Event"],[883,"The Villainess Wants to Take Down the Wicked!",4,"Event"],[884,"A Collection of Eiten-Style Teachings",4,"Event"],[885,"The Magical Princess and the Monster of Krossvikki",4,"Event"],[893,"Fate/Grand Order Memories I",4,"Campaign"],[895,"Destined To Clash",4,"Campaign"],[896,"Gilgamesh in NY",5,"Event"],[897,"Dazzling in a Skyscraper",4,"Event"],[898,"Showtime",3,"Event"],[899,"Grudge Match",5,"Event"],[900,"C.K.T.",5,"Event"],[902,"Welcome to Oniland!",5,"Event"],[903,"Simply Crimson",4,"Event"],[904,"Ashigara Brothers",3,"Event"],[905,"Three Anglers",5,"Event"],[906,"Royal Icing",5,"Event"],[907,"Frost Fighting Bear",5,"Event"],[910,"Chaldea Teatime",5,"Shop"],[911,"The Dragon and the Dragon Swordsman",4,"Campaign"],[912,"Duke of Flame",5,"Gacha"],[913,"What Lies Beyond the Horizon",4,"Gacha"],[914,"The Beauty at the Window",3,"Gacha"],[915,"The Phoenix Alights",4,"Gacha"],[922,"Welcome to the Travelling Circus!",4,"Campaign"],[923,"Schwipsig in the Snow",5,"Event"],[924,"Ring the Bell",4,"Event"],[925,"Burning Broadcast Seat",3,"Event"],[926,"Holy Maiden's Teachings",5,"Event"],[929,"New Year's Greeting",4,"Campaign"],[931,"Mark on a Smiling Face",5,"Event"],[932,"New Year's Mystique",4,"Event"],[933,"A Modest Pig",3,"Event"],[934,"Goddesses of the Glittering Snow",5,"Event"],[937,"Enuma Dingir",4,"Campaign"],[938,"The Noble Sword and Shield",4,"Campaign"],[939,"An Encounter in the Dark Night",4,"Campaign"],[940,"Perfect Destruction",4,"Campaign"],[941,"Contest of Speed",4,"Campaign"],[942,"Paradox Ace Killer",4,"Event"],[944,"Bitter and Sweet",5,"Event"],[945,"Valkyrie Style",4,"Event"],[946,"Memory of Qualia",3,"Event"],[947,"Beautiful Dreamer",5,"Event"],[988,"Bella Lisa",5,"Shop"],[990,"The Dantès Files: The Case of the True Mastermind",5,"Event"],[991,"Dance with the Round Table",5,"Event"],[992,"Cunning Foresight",4,"Event"],[993,"Glorious Cherry Blossoms",4,"Event"],[994,"Teacher and Me",4,"Event"],[995,"Trojan Bar",3,"Event"],[996,"Under the Knife",3,"Event"],[997,"Angel's Breath",3,"Event"],[998,"Vampire Masquerade Ball",3,"Event"],[999,"Princess's Pilgrimage",5,"Event"],[1000,"Spring Beauty",4,"Event"],[1001,"Firefighter's Spirit",3,"Event"],[1002,"Crowning Beauty, Greater Glory",5,"Event"],[1004,"Escape from the Pyramid",4,"Campaign"],[1005,"Whydunit",5,"Event"],[1006,"Winter's Prayer",4,"Event"],[1007,"El-Melloi's Classroom",3,"Event"],[1008,"Meeting of the Heirs",5,"Event"],[1012,"Personal Coaching",5,"Shop"],[1013,"The Singing Spear, the Shouting Spear",4,"Campaign"],[1014,"Sexy Pinup",4,"Campaign"],[1015,"Holy King of Twilight",5,"Gacha"],[1016,"La Folia",4,"Gacha"],[1017,"Day After",3,"Gacha"],[1018,"Family Portrait",4,"Gacha"],[1025,"Grace note",4,"Campaign"],[1026,"Warlords' Rivalry",5,"Event"],[1027,"God of War",4,"Event"],[1028,"Oni Tea Ceremony",3,"Event"],[1029,"Can't Fight on an Empty Stomach",5,"Event"],[1035,"Women of Agartha",4,"Campaign"],[1036,"Seven Duels of Swordmasters",4,"Campaign"],[1037,"Abyssal Cyber Paradise, SE.RA.PH",4,"Campaign"],[1038,"Festival Portrait: Achilles",4,"Campaign"],[1039,"Festival Portrait: Astraea",4,"Campaign"],[1040,"Festival Portrait: Anastasia",4,"Campaign"],[1041,"Festival Portrait: Abigail Williams",4,"Campaign"],[1042,"Festival Portrait: Wolfgang Amadeus Mozart",4,"Campaign"],[1043,"Festival Portrait: Arjuna",4,"Campaign"],[1044,"Festival Portrait: Altria Pendragon",4,"Campaign"],[1045,"Festival Portrait: Hans Christian Andersen",4,"Campaign"],[1046,"Festival Portrait: Antonio Salieri",4,"Campaign"],[1047,"Festival Portrait: Ibaraki-Douji",4,"Campaign"],[1048,"Festival Portrait: Ereshkigal",4,"Campaign"],[1049,"Festival Portrait: Helena Blavatsky",4,"Campaign"],[1050,"Festival Portrait: Yan Qing",4,"Campaign"],[1051,"Festival Portrait: Okada Izo",4,"Campaign"],[1052,"Festival Portrait: Osakabehime",4,"Campaign"],[1053,"Festival Portrait: Katsushika Hokusai",4,"Campaign"],[1054,"Festival Portrait: Yu Mei-ren",4,"Campaign"],[1055,"Festival Portrait: Quetzalcoatl",4,"Campaign"],[1056,"Festival Portrait: Sakamoto Ryouma",4,"Campaign"],[1057,"Festival Portrait: Charles-Henri Sanson",4,"Campaign"],[1058,"Festival Portrait: Qin Shi Huang",4,"Campaign"],[1059,"Festival Portrait: Sitonai",4,"Campaign"],[1060,"Festival Portrait: Jeanne d'Arc",4,"Campaign"],[1061,"Festival Portrait: Shuten-Douji",4,"Campaign"],[1062,"Festival Portrait: Scáthach-Skadi",4,"Campaign"],[1063,"Festival Portrait: Sessyoin Kiara",4,"Campaign"],[1064,"Festival Portrait: Diarmuid Ua Duibhne",4,"Campaign"],[1065,"Festival Portrait: Tomoe Gozen",4,"Campaign"],[1066,"Festival Portrait: Mysterious Heroine XX",4,"Campaign"],[1067,"Festival Portrait: Pārvatī",4,"Campaign"],[1068,"Festival Portrait: Bradamante",4,"Campaign"],[1069,"Festival Portrait: Bedivere",4,"Campaign"],[1070,"Festival Portrait: Paul Bunyan",4,"Campaign"],[1071,"Festival Portrait: Marie Antoinette",4,"Campaign"],[1072,"Festival Portrait: Martha",4,"Campaign"],[1073,"Festival Portrait: Mordred",4,"Campaign"],[1074,"Festival Portrait: Prince of Lan Ling",4,"Campaign"],[1075,"Festival Portrait: Leonardo da Vinci",4,"Campaign"],[1076,"Festival Portrait: Robin Hood",4,"Campaign"],[1077,"A Walk in the Park",5,"Event"],[1078,"Morning Glory",4,"Event"],[1079,"Sunday Dinner",3,"Event"],[1080,"Great Detective Foumes",5,"Shop"],[1089,"Welcome Bunny",5,"Event"],[1090,"Purple Eyes",4,"Event"],[1091,"Summer Enma-tei",3,"Event"],[1092,"Poolside Bar",5,"Event"],[1093,"Ladies & Gentlemen",4,"Event"],[1094,"Counting Sheep",3,"Event"],[1095,"Demonic Sun-Princess",5,"Event"],[1096,"Midsummer Memories",5,"Event"],[1104,"Fate/Grand Order Memories II",4,"Campaign"],[1105,"Heretical Salem",4,"Campaign"],[1106,"Round and Round",5,"Event"],[1107,"Fly Off",4,"Event"],[1108,"From Uruk",3,"Event"],[1109,"Jewel Bride",5,"Event"],[1110,"Scenic Beauty",5,"Event"],[1111,"Absolute Demonic Front: Babylonia",4,"Campaign"],[1112,"Princess of Red Bean Paste",5,"Event"],[1113,"Planet Rock",4,"Event"],[1114,"Cultural and Martial Arts (Simultaneously)",3,"Event"],[1115,"Binary Star Songstresses",5,"Event"],[1116,"Bestia del Sol",5,"Event"],[1121,"Chaldea Dinnertime",5,"Shop"],[1122,"Then the Sacred Sword Shines",4,"Campaign"],[1123,"Maidens' Luncheon",5,"Event"],[1124,"Deliverers of Sentiment",4,"Event"],[1125,"With My Family",3,"Event"],[1126,"Traces of Christmases Past",5,"Event"],[1129,"One Who Wishes for Salvation",5,"Gacha"],[1130,"The Beginning of Ambition",4,"Gacha"],[1131,"Noble Piece",3,"Gacha"],[1132,"Argonauts",4,"Gacha"],[1136,"Capsule Servant",4,"Campaign"],[1137,"Fate/stay night 「Réalta Nua」",4,"Campaign"],[1138,"Fate/stay night -Tracing 15 Years-",4,"Campaign"],[1139,"Chaldea Park Caravan",4,"Campaign"],[1140,"See Emptiness as the Path",5,"Event"],[1141,"Clear Dawn",4,"Event"],[1142,"We Are Friends",3,"Event"],[1143,"Dancing Tops",4,"Campaign"],[1146,"Stargazers",4,"Campaign"],[1147,"Therapeutic Spa",5,"Event"],[1148,"Shinjuku Phantom Incident",4,"Campaign"],[1149,"Gran Cavallo",5,"Shop"],[1150,"Chocolate Heaven",5,"Event"],[1151,"Queen's Dream",4,"Event"],[1152,"Midnight Fever",3,"Event"],[1153,"Knitting Love",5,"Event"],[1196,"Royals Traveling Incognito",5,"Event"],[1197,"Blue Illusion",5,"Event"],[1198,"Exclusive Tailor",4,"Event"],[1199,"The Dantès Files: A New Chapter",4,"Event"],[1200,"High and Mighty Student Council President",4,"Event"],[1201,"Sengoku Freestyle",3,"Event"],[1202,"God's Deal",3,"Event"],[1203,"Daddy's Letter Show",3,"Event"],[1204,"Buzzer-Beater",3,"Event"],[1206,"Elegant Heavens, Generous Earth",4,"Campaign"],[1207,"Witchcraft",5,"Gacha"],[1208,"Rhythmed Birth",4,"Gacha"],[1209,"The Golden Tree's Lineage",3,"Gacha"],[1210,"Together Tomorrow",4,"Gacha"],[1214,"Free Seating",5,"Shop"],[1215,"Mission Start",5,"Event"],[1216,"Tournament Star",4,"Event"],[1217,"Mixed Juice",3,"Event"],[1218,"Looking up at the Starry Sky",5,"Event"],[1222,"Sightseeing Portrait: Atalante",4,"Campaign"],[1223,"Sightseeing Portrait: Anastasia",4,"Campaign"],[1224,"Sightseeing Portrait: Abigail Williams",4,"Campaign"],[1225,"Sightseeing Portrait: Amakusa Shirou",4,"Campaign"],[1226,"Sightseeing Portrait: Altria Pendragon",4,"Campaign"],[1227,"Sightseeing Portrait: Ishtar",4,"Campaign"],[1228,"Sightseeing Portrait: Ushiwakamaru & Musashibou Benkei",4,"Campaign"],[1229,"Sightseeing Portrait: Ereshkigal",4,"Campaign"],[1230,"Sightseeing Portrait: Yan Qing",4,"Campaign"],[1231,"Sightseeing Portrait: Okada Izo",4,"Campaign"],[1232,"Sightseeing Portrait: Osakabehime",4,"Campaign"],[1233,"Sightseeing Portrait: Katsushika Hokusai",4,"Campaign"],[1234,"Sightseeing Portrait: Katou \"Black Kite\" Danzo",4,"Campaign"],[1235,"Sightseeing Portrait: Karna & Arjuna",4,"Campaign"],[1236,"Sightseeing Portrait: Kiyohime",4,"Campaign"],[1237,"Sightseeing Portrait: Kingprotea",4,"Campaign"],[1238,"Sightseeing Portrait: Cú Chulainn",4,"Campaign"],[1239,"Sightseeing Portrait: Yu Mei-ren",4,"Campaign"],[1240,"Sightseeing Portrait: Georgios",4,"Campaign"],[1241,"Sightseeing Portrait:  Xuanzang Sanzang",4,"Campaign"],[1242,"Sightseeing Portrait: Sasaki Kojirou",4,"Campaign"],[1243,"Sightseeing Portrait: Sigurd & Brynhild",4,"Campaign"],[1244,"Sightseeing Portrait: Sherlock Holmes",4,"Campaign"],[1245,"Sightseeing Portrait: Jaguar Warrior",4,"Campaign"],[1246,"Sightseeing Portrait: Jack the Ripper",4,"Campaign"],[1247,"Sightseeing Portrait: Shuten-Douji",4,"Campaign"],[1248,"Sightseeing Portrait: Scáthach-Skadi",4,"Campaign"],[1249,"Sightseeing Portrait: Suzuka Gozen",4,"Campaign"],[1250,"Sightseeing Portrait: Sei Shounagon",4,"Campaign"],[1251,"Sightseeing Portrait: Mysterious Heroine X",4,"Campaign"],[1252,"Sightseeing Portrait: Nitocris",4,"Campaign"],[1253,"Sightseeing Portrait: Fuuma \"Evil-wind\" Kotarou",4,"Campaign"],[1254,"Sightseeing Portrait: Frankenstein",4,"Campaign"],[1255,"Sightseeing Portrait: Bedivere",4,"Campaign"],[1256,"Sightseeing Portrait: Beni-Enma",4,"Campaign"],[1257,"Sightseeing Portrait: Heracles",4,"Campaign"],[1258,"Sightseeing Portrait: Paul Bunyan",4,"Campaign"],[1259,"Sightseeing Portrait: Merlin",4,"Campaign"],[1260,"Sightseeing Portrait: Mash Kyrielight",4,"Campaign"],[1261,"Sightseeing Portrait: Marie Antoinette",4,"Campaign"],[1262,"Sightseeing Portrait: Martha",4,"Campaign"],[1263,"Sightseeing Portrait: Miyamoto Musashi",4,"Campaign"],[1264,"Sightseeing Portrait: Murasaki Shikibu",4,"Campaign"],[1265,"Sightseeing Portrait: Medusa",4,"Campaign"],[1266,"Sightseeing Portrait: Mori Nagayoshi",4,"Campaign"],[1267,"Sightseeing Portrait: Yagyu Tajima-no-kami Munenori",4,"Campaign"],[1268,"Sightseeing Portrait: Prince of Lan Ling",4,"Campaign"],[1269,"Sightseeing Portrait: Leonardo da Vinci",4,"Campaign"],[1270,"Celebrate Memories",5,"Event"],[1271,"Brainstorming",4,"Event"],[1272,"Filler Flowers",3,"Event"],[1273,"Idol Maker",5,"Shop"],[1275,"Waltz in the MOONLIGHT",4,"Campaign"],[1276,"Shadow of Vanity",4,"Campaign"],[1277,"The Dreaming Path",4,"Campaign"],[1278,"Seed of Thorns",4,"Campaign"],[1279,"Held up to the Heavens",4,"Campaign"],[1280,"Honey Lake",5,"Event"],[1281,"Happy☆Drive",4,"Event"],[1282,"Horror Concierge",3,"Event"],[1283,"Hide Hunter",5,"Event"],[1284,"Chainsaw of the Dead",5,"Event"],[1285,"Innocent Blue",5,"Event"],[1286,"Climbing Battle",4,"Event"],[1287,"BFF BBQ",3,"Event"],[1295,"Crimson Teacher's Pointer",5,"Event"],[1296,"Hell's Kitchen",4,"Event"],[1297,"Class Under the Blue Sky",3,"Event"],[1298,"Our Hearts Raised Up High",5,"Event"],[1299,"Sparks of the Makoto",5,"Event"],[1300,"A Sunny Day",4,"Event"],[1301,"Golden Field",3,"Event"],[1302,"The Queen Priestess's Spare Moment",5,"Event"],[1308,"Mystery Treasure",5,"Event"],[1309,"Greatest Ocean",4,"Event"],[1310,"Color Me True",3,"Event"],[1311,"Like a Bird",5,"Event"],[1314,"Take Romance",5,"Shop"],[1315,"Love's Curse",5,"Gacha"],[1316,"Royal Presence",4,"Gacha"],[1317,"God's Tongue",3,"Gacha"],[1318,"And Then, at Mt. Ooe",4,"Gacha"],[1321,"A Leisurely Walk",4,"Campaign"],[1322,"Prayer to the Night Sky",4,"Campaign"],[1323,"A Moment of Amusement",4,"Campaign"],[1324,"A Light Lunch",4,"Campaign"],[1325,"Moonlight Ball",4,"Campaign"],[1327,"Twinkling Stars",5,"Event"],[1328,"Red Box",4,"Event"],[1329,"Freeze Frame",3,"Event"],[1330,"Cherry Icicle",5,"Event"],[1333,"Playing the Spring Strings",5,"Event"],[1334,"Fortune Comes to Those in a Kotatsu",4,"Event"],[1335,"The Valiant",3,"Event"],[1336,"Delightful Kemari",4,"Campaign"],[1339,"A Perfect New Year",4,"Campaign"],[1340,"Winter Caravan Online",4,"Campaign"],[1341,"Thumbelina",5,"Event"],[1342,"Zen Diorama",4,"Event"],[1343,"Taking a Seat",3,"Event"],[1344,"Sewing a Beloved Doll",5,"Event"],[1347,"Fate/Grand Order Memories III",4,"Campaign"],[1348,"Heart of Cooking",5,"Event"],[1349,"Bitter Jewel",4,"Event"],[1350,"Dear Friend",3,"Event"],[1351,"White Garden",5,"Event"],[1384,"Beyond the Rain Clouds",5,"Shop"],[1385,"Flowers and Café",5,"Event"],[1386,"Club Argonauts",5,"Event"],[1387,"The Dantès Files: A Nightmare Returns",4,"Event"],[1388,"Round Table on Ice",4,"Event"],[1389,"Demonic Parade",4,"Event"],[1390,"Chaldea Eleven",3,"Event"],[1391,"Supreme Place of Learning",3,"Event"],[1392,"Splat Gun",3,"Event"],[1393,"∞ Dream",3,"Event"],[1394,"City of Dreams",5,"Event"],[1395,"Junk Shop",4,"Event"],[1396,"Hào Chī?",3,"Event"],[1397,"No Strings",5,"Event"],[1399,"Flower Sunshine",5,"Event"],[1400,"Chaldea Stars",4,"Event"],[1401,"Camelot Lesson",3,"Event"],[1402,"Blooming in the Crimson Sky",5,"Event"],[1405,"Hand in Hand",4,"Campaign"],[1406,"Make a Toast",4,"Campaign"],[1407,"Celebration Bouquet",4,"Campaign"],[1408,"Appreciation",4,"Campaign"],[1409,"Fate/Grand Carnival 1st Season",4,"Campaign"],[1410,"To the Beyond, Bereft the Snowy Blossom",5,"Shop"],[1411,"The One Who Withstood Pain",5,"Gacha"],[1412,"Gemstone Shots",4,"Gacha"],[1413,"Imaginary Number Attribute",4,"Gacha"],[1414,"The Vessel of Desire",4,"Gacha"],[1415,"The Have-Not",3,"Gacha"],[1421,"Touring Portrait: Aśvatthāman",4,"Campaign"],[1422,"Touring Portrait: Astolfo",4,"Campaign"],[1423,"Touring Portrait: Ushiwakamaru",4,"Campaign"],[1424,"Touring Portrait: Saito Hajime",4,"Campaign"],[1425,"Touring Portrait: Dioscuri",4,"Campaign"],[1426,"Touring Portrait: Voyager",4,"Campaign"],[1427,"Touring Portrait: Ashiya Douman",4,"Campaign"],[1428,"Touring Portrait: Abigail Williams",4,"Campaign"],[1429,"Touring Portrait: Van Gogh",4,"Campaign"],[1430,"Touring Portrait: Oda Nobukatsu",4,"Campaign"],[1431,"Touring Portrait: Kama",4,"Campaign"],[1432,"Touring Portrait: Nitocris",4,"Campaign"],[1433,"Touring Portrait: Jason",4,"Campaign"],[1434,"Touring Portrait: Ishtar",4,"Campaign"],[1435,"Touring Portrait: Helena Blavatsky",4,"Campaign"],[1436,"Touring Portrait: Jaguar Warrior",4,"Campaign"],[1437,"Touring Portrait: Mysterious Idol X",4,"Campaign"],[1438,"Touring Portrait: Mysterious Alter Ego Λ",4,"Campaign"],[1439,"Final Singularity: The Grand Temple of Time, Solomon",4,"Campaign"],[1440,"Touring Portrait: Carmilla",4,"Campaign"],[1441,"Touring Portrait: James Moriarty",4,"Campaign"],[1442,"Touring Portrait: Queen Medb",4,"Campaign"],[1443,"Touring Portrait: Beni-Enma",4,"Campaign"],[1444,"Touring Portrait: Miss Crane",4,"Campaign"],[1445,"Touring Portrait: Yang Guifei",4,"Campaign"],[1446,"Touring Portrait: Asclepius",4,"Campaign"],[1447,"Touring Portrait: Wolfgang Amadeus Mozart",4,"Campaign"],[1448,"Touring Portrait: Altria Caster",4,"Campaign"],[1449,"Touring Portrait: Altria Pendragon",4,"Campaign"],[1450,"Touring Portrait: Vritra",4,"Campaign"],[1451,"Touring Portrait: Scáthach-Skadi",4,"Campaign"],[1452,"Touring Portrait: Bartholomew Roberts",4,"Campaign"],[1453,"Touring Portrait: Himiko",4,"Campaign"],[1454,"Touring Portrait: Watanabe-no-Tsuna",4,"Campaign"],[1455,"Touring Portrait: Gareth",4,"Campaign"],[1456,"Touring Portrait: Xuanzang Sanzang",4,"Campaign"],[1457,"Touring Portrait: Senji Muramasa",4,"Campaign"],[1458,"Great Marshal of Magic",5,"Gacha"],[1459,"Summer Anniversary",5,"Event"],[1460,"Reading Holiday",4,"Event"],[1461,"Gof Special",3,"Event"],[1463,"Gloucester in 2018",4,"Gacha"],[1466,"Lightbearer Girl",4,"Campaign"],[1467,"Into the Enchanting Pall",5,"Shop"],[1468,"Angel Heart",5,"Event"],[1469,"Pink Beach",4,"Event"],[1470,"Pirates of the Jungle",3,"Event"],[1471,"Treasure of the Caribbean",5,"Event"],[1472,"Golden Trails",4,"Event"],[1473,"On the Colorful Seaside Corner",3,"Event"],[1474,"Ocean Flier",5,"Event"],[1475,"Sink Deeper",5,"Event"],[1483,"Clashing Fête under the Moon",4,"Campaign"],[1484,"Fate/Grand Carnival 2nd Season",4,"Campaign"],[1485,"Winter Crystal",4,"Gacha"],[1486,"Princess Fair as Snow",5,"Event"],[1487,"Rondo for a Kitten",4,"Event"],[1488,"Protagonista",3,"Event"],[1489,"Opulent Jade Mane",5,"Event"],[1490,"Little Tailors",5,"Event"],[1491,"Bare Kings",5,"Event"],[1495,"Adversity Ablaze",5,"Event"],[1496,"Love, Anarchy",4,"Event"],[1497,"Nothing Can Escape These Eyes",3,"Event"],[1498,"Dancing Like a Flower",5,"Event"],[1504,"Seeking the End of Permanence",5,"Shop"],[1505,"Holy Heart",5,"Event"],[1506,"A Thousand Nights",4,"Event"],[1507,"Wish Come True",3,"Event"],[1508,"Like a Lady",5,"Event"],[1510,"Chaldea Satellite Station",4,"Campaign"],[1511,"Holy Maiden of Winter",5,"Gacha"],[1512,"Guardians of the Garden",4,"Gacha"],[1513,"Homurabara Academy Student Council President",3,"Gacha"],[1514,"Empty Garden",5,"Event"],[1515,"Darkest before the Dawn",4,"Event"],[1516,"Slumbering City",3,"Event"],[1519,"First Drawing",5,"Event"],[1520,"A Thoughtful Meal",4,"Event"],[1521,"Maximum Overdrive",3,"Event"],[1524,"Little Lion's Dance",4,"Campaign"],[1525,"Let's Visit the Shrine for the Year",4,"Campaign"],[1528,"Valentine Witches",5,"Event"],[1529,"Melty Love",4,"Event"],[1530,"Hot Xocolatl",3,"Event"],[1531,"Thank You For Your Hard Work!",5,"Event"],[1565,"Story of a Wolf",5,"Shop"],[1566,"A Night's Dream",5,"Event"],[1567,"Water Gun Battle",5,"Event"],[1568,"The Dantès Files: The Final Case",4,"Event"],[1569,"Buddy Cops",4,"Event"],[1570,"Encounter under the Moon",4,"Event"],[1571,"Chaldea Express",3,"Event"],[1572,"Ultimate Harmony",3,"Event"],[1573,"Chaldea Delinquents",3,"Event"],[1574,"Power Shot",3,"Event"],[1575,"Phantasmal Princess",5,"Gacha"],[1576,"Flowery Paradise",4,"Gacha"],[1577,"The Illusory Confessional",4,"Gacha"],[1578,"Galaxy Keraunos",5,"Event"],[1579,"Doc Kykeon",4,"Event"],[1580,"Secret Company, Assassin",3,"Event"],[1581,"Check, Ready",5,"Event"],[1582,"Cosmo Chaldea Academy",5,"Event"],[1584,"Goddess of the Underworld",5,"Event"],[1585,"Waiting for an Opportunity",4,"Event"],[1586,"Touring the Land",3,"Event"],[1587,"Star's Day Off",5,"Event"],[1592,"Even More Learning with Manga! FGO",4,"Campaign"],[1593,"Adventure in the Kids' Kingdom",5,"Event"],[1594,"Jurassic Dream",4,"Event"],[1595,"Pleasure Hunt",3,"Event"],[1596,"First Day of Filming",5,"Event"],[1605,"Standing beneath the Azure Sky",5,"Shop"],[1606,"Average One",5,"Gacha"],[1607,"Trigger Off",4,"Gacha"],[1608,"Inheritance of a Long-Cherished Dream",4,"Gacha"],[1609,"Transmutation Magecraft",4,"Gacha"],[1610,"Unwithering Flower",3,"Gacha"],[1611,"With Lighted Prayer in Our Hearts",4,"Gacha"],[1620,"Thirty-Six Other Views of Mt. Fuji",5,"Event"],[1621,"Warrior's Watchtower",4,"Event"],[1622,"Valiant Warriors on the Plains",3,"Event"],[1623,"Heartbreaker",5,"Event"],[1626,"Dream Portrait: Red Hare",4,"Campaign"],[1627,"Dream Portrait: Percival",4,"Campaign"],[1628,"Dream Portrait: Charlotte Corday",4,"Campaign"],[1629,"Dream Portrait: Mandricardo",4,"Campaign"],[1630,"Dream Portrait: Mélusine",4,"Campaign"],[1631,"Dream Portrait: James Moriarty",4,"Campaign"],[1632,"Dream Portrait: Arjuna",4,"Campaign"],[1633,"Dream Portrait: Barghest",4,"Campaign"],[1634,"Dream Portrait: Leonardo da Vinci",4,"Campaign"],[1635,"Dream Portrait: Baobhan Sith",4,"Campaign"],[1636,"Dream Portrait: Anastasia & Viy",4,"Campaign"],[1637,"Dream Portrait: Dobrynya Nikitich",4,"Campaign"],[1638,"Dream Portrait: Kriemhild",4,"Campaign"],[1639,"Dream Portrait: Taigong Wang",4,"Campaign"],[1640,"Dream Portrait: Kyokutei Bakin",4,"Campaign"],[1641,"Dream Portrait: Kama",4,"Campaign"],[1642,"Dream Portrait: Mysterious Ranmaru X",4,"Campaign"],[1643,"Dream Portrait: Demon King Nobunaga",4,"Campaign"],[1644,"Dream Portrait: Cú Chulainn",4,"Campaign"],[1645,"Dream Portrait: Mash Kyrielight",4,"Campaign"],[1646,"Dream Portrait: Hijikata Toshizo",4,"Campaign"],[1647,"Dream Portrait: Altria Pendragon",4,"Campaign"],[1648,"Dream Portrait: Super Bunyan",4,"Campaign"],[1649,"Dream Portrait: Jacques de Molay",4,"Campaign"],[1650,"Dream Portrait: Zenobia",4,"Campaign"],[1651,"Dream Portrait: Christopher Columbus",4,"Campaign"],[1652,"Dream Portrait: Katsushika Hokusai",4,"Campaign"],[1653,"Dream Portrait: Sima Yi",4,"Campaign"],[1654,"Dream Portrait: Billy the Kid",4,"Campaign"],[1655,"Dream Portrait: Miyamoto Musashi",4,"Campaign"],[1656,"Dream Portrait: Arash",4,"Campaign"],[1657,"Dream Portrait: Merlin",4,"Campaign"],[1658,"Dream Portrait: Saito Hajime",4,"Campaign"],[1659,"Dream Portrait: Space Ishtar",4,"Campaign"],[1660,"Dream Portrait: Okada Izo",4,"Campaign"],[1661,"Dream Portrait: Siegfried",4,"Campaign"],[1662,"Dream Portrait: Okita Souji",4,"Campaign"],[1663,"Dream Portrait: Mochizuki Chiyome",4,"Campaign"],[1666,"A'",5,"Event"],[1667,"Inspire",4,"Event"],[1668,"Retravel",3,"Event"],[1669,"King of the Seraph",5,"Gacha"],[1670,"Hunter's Dream",4,"Gacha"],[1673,"Twin Tails",5,"Event"],[1674,"Cruising Date",4,"Event"],[1675,"Jiāngshī Attack",3,"Event"],[1676,"Infinity Blue",5,"Event"],[1677,"Budding Angler",4,"Event"],[1678,"Hello, Arctic!",3,"Event"],[1679,"Ice Warrior",5,"Event"],[1680,"Fist of Hail",5,"Event"],[1690,"TYPE LUMINA",4,"Campaign"],[1691,"Inverted Rain of Mud",5,"Gacha"],[1692,"Full Mastership",4,"Gacha"],[1693,"Before Dawn",5,"Shop"],[1696,"Vengeance from the Underworld",5,"Event"],[1697,"Cruel and Unusual",4,"Event"],[1698,"Fruit of the Earth",3,"Event"],[1699,"Hospitality for the Journey",5,"Event"],[1707,"Idle Chatter",5,"Event"],[1708,"Celestial Maidens by the Lake",4,"Event"],[1709,"Swords into Plowshares",3,"Event"],[1710,"Dancing on Lotus Blossoms",5,"Event"],[1711,"Tiger-Hunting Pilgrims",5,"Event"],[1712,"Overflowing Indulgence",5,"Event"],[1718,"Apex",5,"Event"],[1719,"Road to Stardom",4,"Event"],[1720,"Muscle Bullet",3,"Event"],[1721,"Count and Stretch",5,"Event"],[1722,"Commentator of Flowers",5,"Event"],[1726,"Dream Closet",5,"Shop"],[1727,"Pure-Hearted Shield",4,"Campaign"],[1728,"Eternal Spirit of Vengeance",4,"Campaign"],[1729,"Flawless Charismatic Warrior",4,"Campaign"],[1730,"Bouquet of Dazzling Roses",4,"Campaign"],[1731,"Fragment of the Moon",4,"Campaign"],[1732,"Winter Party",4,"Campaign"],[1735,"Precious Blossoms of Snow",5,"Event"],[1736,"First Sale",4,"Event"],[1737,"Curse of the Bunnyfolk",3,"Event"],[1738,"Love It",4,"Campaign"],[1741,"At Least Take the New Year Off",4,"Campaign"],[1744,"Forest of Eclosion",5,"Gacha"],[1745,"Clergyman's Dinner",4,"Gacha"],[1746,"Ele-Gandr",4,"Gacha"],[1747,"I Only Believe In My God",3,"Gacha"],[1748,"That Faraway Night",4,"Gacha"],[1752,"Winds of Spring",5,"Event"],[1753,"Love's Delusion",4,"Event"],[1754,"Sleeping Elisa",3,"Event"],[1755,"The Cutie Who Sits Behind Me",5,"Event"],[1797,"Man of Chaldea",5,"Shop"],[1798,"Three in the Black",5,"Event"],[1799,"Rome, Eternal",5,"Event"],[1800,"Proof and Rebuttal",4,"Event"],[1801,"The Professors' Lunchtime",4,"Event"],[1802,"Brilliant Spring Sunshine",4,"Event"],[1803,"For Your Letters",3,"Event"],[1804,"All the Way Burn",3,"Event"],[1805,"An Evening of Endless Conversation",3,"Event"],[1806,"Light Inside Night's Curtain",3,"Event"],[1808,"Bloom in Spring",4,"Campaign"],[1809,"Great Mother",5,"Event"],[1810,"Mushrooming",4,"Event"],[1811,"Service Games",3,"Event"],[1812,"U-Fou Catcher",4,"Campaign"],[1813,"Chaldea Fighter",4,"Campaign"],[1814,"Opera in Arcade",4,"Campaign"],[1815,"Run, Alter, Run!",4,"Campaign"],[1817,"Cradle Song",5,"Event"],[1821,"Princess in Silks",5,"Event"],[1822,"Diviner's Eight Stone Leap",4,"Event"],[1823,"Gimmick Master",3,"Event"],[1824,"House of Repose",5,"Event"],[1825,"Winner's Eye",5,"Event"],[1828,"Twilight Meditation",5,"Shop"],[1829,"Box of Confessions",5,"Gacha"],[1830,"Labyrinth of Remnant Flowers",5,"Gacha"],[1831,"The Illegitimate Red Child's Dream",4,"Gacha"],[1832,"It's Only a Paper Moon",4,"Gacha"],[1837,"strange Fake",4,"Campaign"],[1838,"Sweat Blood",5,"Event"],[1839,"Flowers of the Sun",4,"Event"],[1840,"Be Shelved",3,"Event"],[1841,"Artisanal Spirit",5,"Event"],[1843,"Celebration Portrait: Achilles",4,"Campaign"],[1844,"Celebration Portrait: Ashiya Douman",4,"Campaign"],[1845,"Celebration Portrait: Asclepius",4,"Campaign"],[1846,"Celebration Portrait: Abigail Williams",4,"Campaign"],[1847,"Celebration Portrait: Ibuki-Douji",4,"Campaign"],[1848,"Celebration Portrait: Ereshkigal",4,"Campaign"],[1849,"Celebration Portrait: Okada Izo",4,"Campaign"],[1850,"Celebration Portrait: Pope Johanna",4,"Campaign"],[1851,"Celebration Portrait: Kama",4,"Campaign"],[1852,"Celebration Portrait: Circe",4,"Campaign"],[1853,"Celebration Portrait: Cú Chulainn",4,"Campaign"],[1854,"Celebration Portrait: Kukulcan",4,"Campaign"],[1855,"Celebration Portrait: Gray",4,"Campaign"],[1856,"Celebration Portrait: Kōnstantînos XI",4,"Campaign"],[1857,"Celebration Portrait: Saito Hajime",4,"Campaign"],[1858,"Celebration Portrait: Sakamoto Ryouma",4,"Campaign"],[1859,"Celebration Portrait: Salome",4,"Campaign"],[1860,"Celebration Portrait: Qin Shi Huang",4,"Campaign"],[1861,"Celebration Portrait: Charlemagne",4,"Campaign"],[1862,"Celebration Portrait: Jeanne d'Arc",4,"Campaign"],[1863,"Celebration Portrait: Xu Fu",4,"Campaign"],[1864,"Celebration Portrait: Scáthach",4,"Campaign"],[1865,"Celebration Portrait: Sei Shounagon",4,"Campaign"],[1866,"Celebration Portrait: Sétanta",4,"Campaign"],[1867,"Celebration Portrait: Taigong Wang",4,"Campaign"],[1868,"Celebration Portrait: Taisui Xingjun",4,"Campaign"],[1869,"Celebration Portrait: Taira-no-Kagekiyo",4,"Campaign"],[1870,"Celebration Portrait: Takasugi Shinsaku",4,"Campaign"],[1871,"Celebration Portrait: Larva/Tiamat",4,"Campaign"],[1872,"Celebration Portrait: Tenochtitlan",4,"Campaign"],[1873,"Celebration Portrait: Tomoe Gozen",4,"Campaign"],[1874,"Celebration Portrait: Sodom's Beast/Draco",4,"Campaign"],[1875,"Celebration Portrait: Nezha",4,"Campaign"],[1876,"Celebration Portrait: Nitocris",4,"Campaign"],[1877,"Celebration Portrait: Bhīma",4,"Campaign"],[1878,"Celebration Portrait: Frankenstein",4,"Campaign"],[1879,"Celebration Portrait: Beni-Enma",4,"Campaign"],[1880,"Celebration Portrait: Manannan mac Lir",4,"Campaign"],[1881,"Celebration Portrait: Mordred",4,"Campaign"],[1882,"Celebration Portrait: Yamanami Keisuke",4,"Campaign"],[1883,"Celebration Portrait: Yang Guifei",4,"Campaign"],[1884,"Celebration Portrait: Prince of Lan Ling",4,"Campaign"],[1885,"Celebration Portrait: Lady Avalon",4,"Campaign"],[1886,"Celebration Portrait: Locusta",4,"Campaign"],[1887,"The Wrap Party Never Ends",4,"Campaign"],[1888,"Chasmatis",5,"Event"],[1889,"Before the Party",4,"Event"],[1890,"In a Corner of the Light",3,"Event"],[1891,"The Lamb of Orleans",5,"Gacha"],[1892,"Eight Bloodlines",4,"Gacha"],[1894,"Hold Me Tight for Each Rice that Comes By",4,"Campaign"],[1895,"Dazzling Moon",5,"Event"],[1896,"Cactus City",4,"Event"],[1897,"Beyond the Waves",3,"Event"],[1898,"Summer Break",5,"Event"],[1899,"Rounds Beach",4,"Event"],[1900,"In Sickness and In Health",3,"Event"],[1901,"Apart, but Together",5,"Event"],[1902,"Beyond the Bubbles",5,"Event"],[1906,"Chaldea Game Night - Let's Play with Altria",4,"Event"],[1907,"Mount Altriang",4,"Event"],[1908,"Phantasma - Mordred Photo Collection",4,"Event"],[1909,"Teach Us! Secrets to Health!",4,"Event"],[1910,"Ex Bean Paste Photo Collection",4,"Event"],[1915,"Chaldea Game Night",4,"Event"],[1916,"Tokimeki Iron Whip",4,"Event"],[1917,"Super Doctor",4,"Event"],[1918,"Dog Days Bishonen Records",4,"Event"],[1919,"EVER DARK ~Eternal Night Frontline~",4,"Event"],[1920,"Faerie Britain's Summer Break",4,"Event"],[1921,"Tropical Island Festival",4,"Event"],[1922,"President Ocean",5,"Shop"],[1923,"Ref-Rain",5,"Event"],[1924,"Smile Knight",4,"Event"],[1925,"Still on the Road",3,"Event"],[1926,"How To Travel the Stars",5,"Event"],[1928,"Samurai Remnant",4,"Campaign"],[1929,"Bibliophilia",5,"Event"],[1930,"Day and Night",4,"Event"],[1931,"Your Adventure",3,"Event"],[1932,"Remnants on the Sand Board",5,"Event"],[1936,"The Blank Man",4,"Gacha"],[1937,"Natural Predator",4,"Gacha"],[1938,"Misty Scene",4,"Gacha"],[1939,"Pilgrimage Festival/Six",4,"Campaign"],[1940,"Highway Meteor Shower",5,"Event"],[1941,"Northern Willow",4,"Event"],[1942,"Further than Mount Fuji",3,"Event"],[1943,"How to Life",5,"Event"],[1949,"From NFF with Love",5,"Shop"],[1951,"Octo Nautica",5,"Event"],[1952,"Comme un Sablier",4,"Event"],[1953,"A Very Precious Gift",3,"Event"],[1954,"Silent Night, Holy Blue",5,"Event"],[1956,"Satellite Station 23-24",4,"Campaign"],[1958,"Goddesses' Fortune",5,"Event"],[1959,"First Bloom with Crane",4,"Event"],[1960,"In the Pacific Rim Region",3,"Event"],[1961,"Dragon Dance",4,"Campaign"],[1964,"Faerie Britain New Year's Ritual",4,"Campaign"],[1965,"Waxing Moon Ritual",4,"Campaign"],[1966,"Woman of the Niten Ichiryu",5,"Event"],[1967,"A Chance Encounter",4,"Event"],[1968,"An Even Match",3,"Event"],[1969,"Dumplings over the Moon",5,"Event"],[1973,"Twilight Portrait: Saber",4,"Campaign"],[1974,"Twilight Portrait: Archer",4,"Campaign"],[1975,"Twilight Portrait: Lancer",4,"Campaign"],[1976,"Twilight Portrait: Rider",4,"Campaign"],[1977,"Twilight Portrait: Caster",4,"Campaign"],[1978,"Twilight Portrait: Assassin",4,"Campaign"],[1979,"Twilight Portrait: Berserker",4,"Campaign"],[1980,"Pilgrimage Festival/Seven",4,"Campaign"],[1981,"Milky Way",5,"Event"],[1982,"Chocolate Rafting",4,"Event"],[1983,"Sweet Flower",3,"Event"],[1984,"A Reward Awaits After Your Studies",5,"Event"],[2020,"Chaldea Morning",5,"Shop"],[2021,"BRD",5,"Event"],[2022,"Capricious",5,"Event"],[2023,"Enemies in the Same Boat",4,"Event"],[2024,"Dabbling in Magecraft",4,"Event"],[2025,"Chaldea Detectives",4,"Event"],[2026,"Greedy Dice",3,"Event"],[2027,"Crystal of Wisdom",3,"Event"],[2028,"Smooth Sailing",3,"Event"],[2029,"Master's Day Off",3,"Event"],[2031,"One Who Failed To Achieve Immortality",5,"Gacha"],[2032,"Recollections of Smoke",4,"Gacha"],[2033,"Ordinary Blade",4,"Gacha"],[2034,"Faraway Days",4,"Gacha"],[2039,"Meeting in Spring",4,"Campaign"],[2040,"Pilgrimage Festival/Eight",4,"Campaign"],[2041,"Puppeteer's Respite",5,"Event"],[2042,"Phantasmal's Food Crawl",4,"Event"],[2043,"Those Who Watch Over the Night",4,"Event"],[2044,"School in Misaki",3,"Event"],[2045,"Hot Springs Ball Games",5,"Event"],[2052,"Checking Reports",5,"Shop"],[2053,"Across the River of Stars",5,"Event"],[2054,"Underwater Feast",4,"Event"],[2055,"Arrival of the Colossus",3,"Event"],[2056,"Mister Red Gadget",5,"Event"],[2058,"Exhibition Attire: Asclepius",4,"Campaign"],[2059,"Expo Portrait: Astolfo",4,"Campaign"],[2060,"Expo Portrait: Abigail Williams",4,"Campaign"],[2061,"Expo Portrait: Amakusa Shirou",4,"Campaign"],[2062,"Expo Portrait: Aesc the Rain Witch",4,"Campaign"],[2063,"Expo Portrait: Antonio Salieri",4,"Campaign"],[2064,"Expo Portrait: Andromeda",4,"Campaign"],[2065,"Expo Portrait: Jason",4,"Campaign"],[2066,"Expo Portrait: Izumo-no-Okuni",4,"Campaign"],[2067,"Expo Portrait: Yan Qing",4,"Campaign"],[2068,"Expo Portrait: Oda Nobunaga",4,"Campaign"],[2069,"Expo Portrait: Oberon",4,"Campaign"],[2070,"Expo Portrait: Kama",4,"Campaign"],[2071,"Expo Portrait: Katsushika Hokusai",4,"Campaign"],[2072,"Expo Portrait: Monte Cristo",4,"Campaign"],[2073,"Expo Portrait: Cú Chulainn",4,"Campaign"],[2074,"Expo Portrait: Sakata Kintoki",4,"Campaign"],[2075,"Expo Portrait: Sakamoto Ryouma",4,"Campaign"],[2076,"Expo Portrait: Sasaki Kojirou",4,"Campaign"],[2077,"Expo Portrait: Miyamoto Musashi",4,"Campaign"],[2078,"Expo Portrait: Sei Shounagon",4,"Campaign"],[2079,"Expo Portrait: Sen-no-Rikyu",4,"Campaign"],[2080,"Expo Portrait: Takasugi Shinsaku",4,"Campaign"],[2081,"Expo Portrait: Takeda Shingen",4,"Campaign"],[2082,"Expo Portrait: Nagakura Shinpachi",4,"Campaign"],[2083,"Expo Portrait: Mysterious Heroine X",4,"Campaign"],[2084,"Expo Portrait: Cnoc na Riabh Yaraändoo",4,"Campaign"],[2085,"Expo Portrait: Boudica",4,"Campaign"],[2086,"Expo Portrait: Fuuma \"Evil-wind\" Kotarou",4,"Campaign"],[2087,"Expo Portrait: Ptolemaîos",4,"Campaign"],[2088,"Expo Portrait: Britomart",4,"Campaign"],[2089,"Expo Portrait: Bedivere",4,"Campaign"],[2090,"Expo Portrait: Hephaistíon",4,"Campaign"],[2091,"Expo Portrait: Marie Antoinette",4,"Campaign"],[2092,"Expo Portrait: Minamoto-no-Raikou",4,"Campaign"],[2093,"Expo Portrait: Mélusine",4,"Campaign"],[2094,"Expo Portrait: Mori Nagayoshi",4,"Campaign"],[2095,"Expo Portrait: Yui Shousetsu",4,"Campaign"],[2096,"Expo Portrait: UDK-Barghest",4,"Campaign"],[2097,"Expo Portrait: Tam Lin Tristan",4,"Campaign"],[2098,"Expo Portrait: Hassan of the Shining Star",4,"Campaign"],[2099,"Expo Portrait: Larva/Tiamat",4,"Campaign"],[2100,"Flames of Ovation",5,"Event"],[2101,"Crown & August",4,"Event"],[2102,"Welcome to the Expo",3,"Event"],[2103,"King of Tsukumihara Academy",5,"Gacha"],[2104,"Shinji Tank, Attack!",4,"Gacha"],[2106,"\"You've Lost Ritsuka Fujimaru\" Season 2",4,"Campaign"],[2107,"Fate/stay night REMASTERED",4,"Campaign"],[2108,"With the Moon",5,"Event"],[2109,"Poolside Maid",4,"Event"],[2110,"Portable Modak",3,"Event"],[2111,"Bright Blue",5,"Event"],[2112,"Queen Killer",4,"Event"],[2113,"The Souq",3,"Event"],[2114,"Superb Vistas, Sublime Artistry",5,"Event"],[2115,"Fanned by the Twilight Wind",5,"Event"],[2122,"Pure Land of Rapture",5,"Gacha"],[2123,"The Start of Her Escape",4,"Gacha"],[2124,"Manuscript's Wings",5,"Shop"],[2125,"A Cherry Blossom's Dream Across the Seas",4,"Gacha"],[2128,"Lord of the Department of Mineralogy",5,"Gacha"],[2129,"Parched Fist",5,"Gacha"],[2130,"Geis of Falsehoods",4,"Gacha"],[2131,"More than Any Gemstones in this World",5,"Event"],[2132,"Song of Slumber",4,"Event"],[2133,"Father's Cooking",3,"Event"],[2134,"With My Father",5,"Event"],[2136,"Pilgrimage on The Starry Night",5,"Event"],[2137,"Oasis Knight",4,"Event"],[2138,"Depraved Monk of the West",3,"Event"],[2139,"Pioneering Onis",5,"Event"],[2142,"Secret Mission",5,"Shop"],[2143,"Satellite Station 24-25",4,"Campaign"],[2144,"Lamp in Hand",5,"Event"],[2145,"FLower Doll",4,"Event"],[2146,"Toy Gate",3,"Event"],[2147,"December 23rd",5,"Event"],[2150,"Blessed Be the Holy Night",5,"Event"],[2151,"New Year Present",4,"Event"],[2152,"Mysterious Cat G",3,"Event"],[2153,"Magical Sion",5,"Event"],[2155,"The Glow of Dawn",5,"Event"],[2156,"Waiting for Spring With You",4,"Event"],[2157,"The One Who Roughs Up Old Ruins",3,"Event"],[2158,"First Calligraphy",4,"Campaign"],[2161,"Let's Play Soccer!",4,"Campaign"],[2162,"Pilgrimage Festival/One",4,"Campaign"],[2163,"Pilgrimage Festival/Two",4,"Campaign"],[2164,"Pilgrimage Festival/Three",4,"Campaign"],[2165,"Pilgrimage Festival/Four",4,"Campaign"],[2166,"Pilgrimage Festival/Five",4,"Campaign"],[2167,"The Treasure",5,"Event"],[2168,"Hunting Dragons",4,"Event"],[2169,"Snake Senpais",3,"Event"],[2170,"Desert Maiden",5,"Event"],[2173,"My Little Dragon",4,"Event"],[2174,"Pilgrimage Festival/Nine",4,"Campaign"],[2175,"Lily Chocolat",5,"Event"],[2176,"The Voice of the One I've Waited For",4,"Event"],[2177,"Comic Girl",3,"Event"],[2178,"Sweet Lemon",5,"Event"],[2208,"Pilgrimage Festival/Ten",4,"Campaign"],[2209,"Needle of Sincerity",5,"Shop"],[2210,"Detective Cristo ~Chance Encounter in a Future Episode~",5,"Event"],[2211,"Coal Lava",5,"Event"],[2212,"Weather Report < P >",4,"Event"],[2213,"Brothers' Special",4,"Event"],[2214,"Riceball Remnant",4,"Event"],[2215,"Chaldea Agents",3,"Event"],[2216,"A Certain Priest's Banquet",3,"Event"],[2217,"Delivery Healing",3,"Event"],[2218,"A Conversation on Archery",3,"Event"],[2220,"Into the Spring",4,"Campaign"],[2221,"Pilgrimage Festival/Eleven",4,"Campaign"],[2222,"Pilgrimage Festival/Twelve",4,"Campaign"],[2223,"Innate Time Control",5,"Gacha"],[2224,"Weapon of the Magus Killer",4,"Gacha"],[2225,"Hortensia",3,"Gacha"],[2226,"Concert in Room 203",4,"Gacha"],[2231,"Pilgrimage Festival/Thirteen",4,"Campaign"],[2232,"The One Who Stands at the Summit of Sabers",5,"Shop"],[2233,"Blessed Bride",5,"Shop"],[2234,"Taste of Wish",5,"Event"],[2235,"Dragon Trekking",4,"Event"],[2236,"Everlasting Troy",3,"Event"],[2237,"To the Sea",5,"Event"],[2239,"The One Who Stands at the Summit of Berserkers",5,"Shop"],[2240,"Heroic Spirit Stellar Journey: Antonio Salieri",4,"Campaign"],[2241,"Heroic Spirit Stellar Journey: Osakabehime",4,"Campaign"],[2242,"Heroic Spirit Stellar Journey: Katou \"Black Kite\" Danzo ＆ Kashin Koji",4,"Campaign"],[2243,"Heroic Spirit Stellar Journey: Kyokutei Bakin",4,"Campaign"],[2244,"Heroic Spirit Stellar Journey: Xuanzang Sanzang",4,"Campaign"],[2245,"Heroic Spirit Stellar Journey: Gilgamesh (Child)",4,"Campaign"],[2246,"Heroic Spirit Stellar Journey: Jeanne d'Arc (Alter)",4,"Campaign"],[2247,"Heroic Spirit Stellar Journey: Taigong Wang",4,"Campaign"],[2248,"Heroic Spirit Stellar Journey: Taisui Xingjun",4,"Campaign"],[2249,"Heroic Spirit Stellar Journey: Tezcatlipoca",4,"Campaign"],[2250,"Heroic Spirit Stellar Journey: Tenochtitlan",4,"Campaign"],[2251,"Heroic Spirit Stellar Journey: Fuuma \"Evil-wind\" Kotarou ＆ Hassan of the Shining Star",4,"Campaign"],[2252,"Heroic Spirit Stellar Journey: Heracles",4,"Campaign"],[2253,"Heroic Spirit Stellar Journey: Voyager",4,"Campaign"],[2254,"Heroic Spirit Stellar Journey: Mash Kyrielight",4,"Campaign"],[2255,"Heroic Spirit Stellar Journey: UDK-Barghest",4,"Campaign"],[2256,"Heroic Spirit Stellar Journey: Larva/Tiamat",4,"Campaign"],[2257,"Heroic Spirit Stellar Journey: Prince of Lan Ling",4,"Campaign"],[2258,"Heroic Spirit Stellar Journey: Romulus=Quirinus",4,"Campaign"],[2259,"Among the Nymphaea",5,"Event"],[2260,"Dance of the Thunder God",4,"Event"],[2261,"Festival of Light",3,"Event"],[2262,"Sun Shower",5,"Event"],[2264,"The One Who Stands at the Summit of Lancers",5,"Shop"],[2265,"Heroic Spirit Stellar Journey: Altria Caster",4,"Campaign"],[2266,"Heroic Spirit Stellar Journey: Van Gogh",4,"Campaign"],[2267,"Heroic Spirit Stellar Journey: Oberon",4,"Campaign"],[2268,"Heroic Spirit Stellar Journey: Kama",4,"Campaign"],[2269,"Heroic Spirit Stellar Journey: Carmilla & Medea",4,"Campaign"],[2270,"Heroic Spirit Stellar Journey: Katsushika Hokusai",4,"Campaign"],[2271,"Heroic Spirit Stellar Journey: The Count of Monte Cristo",4,"Campaign"],[2272,"Heroic Spirit Stellar Journey: Takasugi Shinsaku",4,"Campaign"],[2273,"Heroic Spirit Stellar Journey: Durga",4,"Campaign"],[2274,"Heroic Spirit Stellar Journey: Nitocris",4,"Campaign"],[2275,"Heroic Spirit Stellar Journey: Bartholomew Roberts & Edward Teach",4,"Campaign"],[2276,"Heroic Spirit Stellar Journey: Hector",4,"Campaign"],[2277,"Heroic Spirit Stellar Journey: Beni-Enma",4,"Campaign"],[2278,"Heroic Spirit Stellar Journey: Merlin",4,"Campaign"],[2279,"Heroic Spirit Stellar Journey: Mandricardo",4,"Campaign"],[2280,"Heroic Spirit Stellar Journey: “Old Man of the Mountain”",4,"Campaign"],[2281,"Heroic Spirit Stellar Journey: Koyanskaya of Dark",4,"Campaign"],[2282,"Heroic Spirit Stellar Journey: Lady Avalon",4,"Campaign"],[2283,"Servant Art Chronicle",4,"Campaign"],[2284,"Heroic Spirit Celebratory Attire: Archetype:Earth",4,"Campaign"],[2285,"Heroic Spirit Celebratory Attire: Arash",4,"Campaign"],[2286,"Heroic Spirit Celebratory Attire: Aoko Aozaki",4,"Campaign"],[2287,"Heroic Spirit Celebratory Attire: Achilles",4,"Campaign"],[2288,"Heroic Spirit Celebratory Attire: Ashiya Douman",4,"Campaign"],[2289,"Heroic Spirit Celebratory Attire: King Ashoka",4,"Campaign"],[2290,"Heroic Spirit Celebratory Attire: Asclepius",4,"Campaign"],[2291,"Heroic Spirit Celebratory Attire: Anastasia",4,"Campaign"],[2292,"Heroic Spirit Celebratory Attire: Abigail Williams",4,"Campaign"],[2293,"Heroic Spirit Celebratory Attire: Wolfgang Amadeus Mozart",4,"Campaign"],[2294,"Heroic Spirit Celebratory Attire: Arjuna",4,"Campaign"],[2295,"Heroic Spirit Celebratory Attire: Attila the San(ta)",4,"Campaign"],[2296,"Heroic Spirit Celebratory Attire: Altria Pendragon",4,"Campaign"],[2297,"Heroic Spirit Celebratory Attire: Ibuki-Douji",4,"Campaign"],[2298,"Heroic Spirit Celebratory Attire: Indra",4,"Campaign"],[2299,"Heroic Spirit Celebratory Attire: William Tell",4,"Campaign"],[2300,"Heroic Spirit Celebratory Attire: Ushiwakamaru",4,"Campaign"],[2301,"Heroic Spirit Celebratory Attire: Utsumi Erice",4,"Campaign"],[2302,"Heroic Spirit Celebratory Attire: Vlad III",4,"Campaign"],[2303,"Heroic Spirit Celebratory Attire: Vritra",4,"Campaign"],[2304,"Heroic Spirit Celebratory Attire: Euryale",4,"Campaign"],[2305,"Heroic Spirit Celebratory Attire: Emiya",4,"Campaign"],[2306,"Heroic Spirit Celebratory Attire: Enkidu",4,"Campaign"],[2307,"Heroic Spirit Celebratory Attire: Helena Blatvasky",4,"Campaign"],[2308,"Heroic Spirit Celebratory Attire: Okita Souji",4,"Campaign"],[2309,"Heroic Spirit Celebratory Attire: Ono no Komachi",4,"Campaign"],[2310,"Heroic Spirit Celebratory Attire: Oberon",4,"Campaign"],[2311,"Heroic Spirit Celebratory Attire: Pope Johanna",4,"Campaign"],[2312,"Heroic Spirit Celebratory Attire: Kama",4,"Campaign"],[2313,"Heroic Spirit Celebratory Attire: Kali",4,"Campaign"],[2314,"Heroic Spirit Celebratory Attire: Caenis",4,"Campaign"],[2315,"Heroic Spirit Celebratory Attire: Gawain",4,"Campaign"],[2316,"Heroic Spirit Celebratory Attire: Kashin Koji",4,"Campaign"],[2317,"Heroic Spirit Celebratory Attire: Katou \"Black Kite\" Danzo",4,"Campaign"],[2318,"Heroic Spirit Celebratory Attire: Calamity Jane",4,"Campaign"],[2319,"Heroic Spirit Celebratory Attire: Karna",4,"Campaign"],[2320,"Heroic Spirit Celebratory Attire: Gareth",4,"Campaign"],[2321,"Heroic Spirit Celebratory Attire: Kiichi Hougen",4,"Campaign"],[2322,"Heroic Spirit Celebratory Attire: Kiyohime",4,"Campaign"],[2323,"Heroic Spirit Celebratory Attire: Cú Chulainn",4,"Campaign"],[2324,"Heroic Spirit Celebratory Attire: Kukulcan",4,"Campaign"],[2325,"Heroic Spirit Celebratory Attire: Yu Mei-ren",4,"Campaign"],[2326,"Heroic Spirit Celebratory Attire: Chloe",4,"Campaign"],[2327,"Heroic Spirit Celebratory Attire: Kurohime",4,"Campaign"],[2328,"Heroic Spirit Celebratory Attire: Xiang Yu",4,"Campaign"],[2329,"Heroic Spirit Celebratory Attire: Huang Feihu",4,"Campaign"],[2330,"Heroic Spirit Celebratory Attire: Huyan Zhuo",4,"Campaign"],[2331,"Heroic Spirit Celebratory Attire: Komahime",4,"Campaign"],[2332,"Heroic Spirit Celebratory Attire: Christopher Columbus",4,"Campaign"],[2333,"Heroic Spirit Celebratory Attire: Saika Magoichi",4,"Campaign"],[2334,"Heroic Spirit Celebratory Attire: Saito Hajime",4,"Campaign"],[2335,"Heroic Spirit Celebratory Attire: Charles-Henri Sanson",4,"Campaign"],[2336,"Heroic Spirit Celebratory Attire: James Moriarty",4,"Campaign"],[2337,"Heroic Spirit Celebratory Attire: Qin Shi Huang",4,"Campaign"],[2338,"Heroic Spirit Celebratory Attire: Sima Yi",4,"Campaign"],[2339,"Heroic Spirit Celebratory Attire: Queen of Sheba",4,"Campaign"],[2340,"Heroic Spirit Celebratory Attire: Sherlock Holmes",4,"Campaign"],[2341,"Heroic Spirit Celebratory Attire: Jaguar Warrior",4,"Campaign"],[2342,"Heroic Spirit Celebratory Attire: Jack the Ripper",4,"Campaign"],[2343,"Heroic Spirit Celebratory Attire: Jacques de Molay",4,"Campaign"],[2344,"Heroic Spirit Celebratory Attire: Xu Fu",4,"Campaign"],[2345,"Heroic Spirit Celebratory Attire: Super Bunyan",4,"Campaign"],[2346,"Heroic Spirit Celebratory Attire: Scáthach",4,"Campaign"],[2347,"Heroic Spirit Celebratory Attire: Sugitani Zenjubou",4,"Campaign"],[2348,"Heroic Spirit Celebratory Attire: Suzuka Gozen (Summer Vacation)",4,"Campaign"],[2349,"Heroic Spirit Celebratory Attire: Stheno",4,"Campaign"],[2350,"Heroic Spirit Celebratory Attire: Red Hare",4,"Campaign"],[2351,"Heroic Spirit Celebratory Attire: Setanta",4,"Campaign"],[2352,"Heroic Spirit Celebratory Attire: Zenobia",4,"Campaign"],[2353,"Heroic Spirit Celebratory Attire: Taigong Wang",4,"Campaign"],[2354,"Heroic Spirit Celebratory Attire: Takasugi Shinsaku",4,"Campaign"],[2355,"Heroic Spirit Celebratory Attire: Dante Alighieri",4,"Campaign"],[2356,"Heroic Spirit Celebratory Attire: Zhang Yue",4,"Campaign"],[2357,"Heroic Spirit Celebratory Attire: Hai Bà Trưng",4,"Campaign"],[2358,"Heroic Spirit Celebratory Attire: Tutankhamun",4,"Campaign"],[2359,"Heroic Spirit Celebratory Attire: Tezcatlipoca",4,"Campaign"],[2360,"Heroic Spirit Celebratory Attire: Tenochtitlan",4,"Campaign"],[2361,"Heroic Spirit Celebratory Attire: Dobrynya Nikitich",4,"Campaign"],[2362,"Heroic Spirit Celebratory Attire: Nagakura Shinpachi",4,"Campaign"],[2363,"Heroic Spirit Celebratory Attire: Mysterious Heroine XX",4,"Campaign"],[2364,"Heroic Spirit Celebratory Attire: Napoleon",4,"Campaign"],[2365,"Heroic Spirit Celebratory Attire: Nikola Tesla",4,"Campaign"],[2366,"Heroic Spirit Celebratory Attire: Nitocris",4,"Campaign"],[2367,"Heroic Spirit Celebratory Attire: Baobhan Sith",4,"Campaign"],[2368,"Heroic Spirit Celebratory Attire: Barghest",4,"Campaign"],[2369,"Heroic Spirit Celebratory Attire: Percival",4,"Campaign"],[2370,"Heroic Spirit Celebratory Attire: Habetrot",4,"Campaign"],[2371,"Heroic Spirit Celebratory Attire: Hijikata Toshizo",4,"Campaign"],[2372,"Heroic Spirit Celebratory Attire: Biscione",4,"Campaign"],[2373,"Heroic Spirit Celebratory Attire: Hassan of the Hundred Personas",4,"Campaign"],[2374,"Heroic Spirit Celebratory Attire: Fionn mac Cumhaill",4,"Campaign"],[2375,"Heroic Spirit Celebratory Attire: Wu Zetian",4,"Campaign"],[2376,"Heroic Spirit Celebratory Attire: Bradamante",4,"Campaign"],[2377,"Heroic Spirit Celebratory Attire: Frankenstein",4,"Campaign"],[2378,"Heroic Spirit Celebratory Attire: Bedivere",4,"Campaign"],[2379,"Heroic Spirit Celebratory Attire: Penthesilea",4,"Campaign"],[2380,"Heroic Spirit Celebratory Attire: Merlin",4,"Campaign"],[2381,"Heroic Spirit Celebratory Attire: Manannán mac Lir",4,"Campaign"],[2382,"Heroic Spirit Celebratory Attire: Marie Antoinette",4,"Campaign"],[2383,"Heroic Spirit Celebratory Attire: Mandricardo",4,"Campaign"],[2384,"Heroic Spirit Celebratory Attire: Miss Crane",4,"Campaign"],[2385,"Heroic Spirit Celebratory Attire: Minamoto-no-Tametomo",4,"Campaign"],[2386,"Heroic Spirit Celebratory Attire: Miyamoto Iori",4,"Campaign"],[2387,"Heroic Spirit Celebratory Attire: Medusa",4,"Campaign"],[2388,"Heroic Spirit Celebratory Attire: Mélusine",4,"Campaign"],[2389,"Heroic Spirit Celebratory Attire: Mochizuki Chiyome",4,"Campaign"],[2390,"Heroic Spirit Celebratory Attire: Yamanami Keisuke",4,"Campaign"],[2391,"Heroic Spirit Celebratory Attire: Prince of Lan Ling",4,"Campaign"],[2392,"Heroic Spirit Celebratory Attire: Lilith",4,"Campaign"],[2393,"Heroic Spirit Celebratory Attire: Leonardo da Vinci",4,"Campaign"],[2394,"Heroic Spirit Celebratory Attire: Louhi",4,"Campaign"],[2395,"Heroic Spirit Celebratory Attire: Watanabe-no-Tsuna",4,"Campaign"],[2396,"Heroic Spirit Celebratory Attire: Wandjina",4,"Campaign"],[2397,"Kingdom of Yours",5,"Event"],[2398,"Concert of Rondo",4,"Event"],[2399,"Pleasant Street",3,"Event"],[2400,"Dismantling of Mystery",5,"Gacha"],[2402,"\"You've Lost Ritsuka Fujimaru\" Season 3",4,"Campaign"],[2403,"The Ascendant from Hither",5,"Shop"],[2404,"The Ascendant from Thither",5,"Shop"],[2405,"Fate/hollow ataraxia REMASTERED",4,"Campaign"],[2406,"Stormy Night",5,"Event"],[2407,"Empress Quest",4,"Event"],[2408,"As a Dad",3,"Event"],[2409,"Summer Inferno",5,"Event"],[2410,"Veggie Chow Mein",4,"Event"],[2411,"Sun Boat",3,"Event"],[2412,"Sleeping Warrior",5,"Event"],[2413,"A Hundred Sparkles",5,"Event"],[2421,"Heroic Spirit Stellar Journey: Astraea",4,"Campaign"],[2422,"Heroic Spirit Stellar Journey: Arjuna",4,"Campaign"],[2423,"Heroic Spirit Stellar Journey: Ibaraki-Douji",4,"Campaign"],[2424,"Heroic Spirit Stellar Journey: Vritra",4,"Campaign"],[2425,"Heroic Spirit Stellar Journey: Okada Izo",4,"Campaign"],[2426,"Heroic Spirit Stellar Journey: Gray",4,"Campaign"],[2427,"Heroic Spirit Stellar Journey: Shuten-Douji",4,"Campaign"],[2428,"Heroic Spirit Stellar Journey: Red Hare",4,"Campaign"],[2429,"Heroic Spirit Stellar Journey: Sen-no-Rikyu",4,"Campaign"],[2430,"Heroic Spirit Stellar Journey: Florence Nightingale",4,"Campaign"],[2431,"Heroic Spirit Stellar Journey: Baobhan Sith",4,"Campaign"],[2432,"Heroic Spirit Stellar Journey: Percival",4,"Campaign"],[2433,"Heroic Spirit Stellar Journey: Britomart",4,"Campaign"],[2434,"Heroic Spirit Stellar Journey: Mordred",4,"Campaign"],[2435,"Heroic Spirit Stellar Journey: Mori Nagayoshi",4,"Campaign"],[2436,"Heroic Spirit Stellar Journey: Locusta",4,"Campaign"],[2437,"Foreign God",5,"Shop"],[2438,"Beyond the Flood",5,"Event"],[2439,"A Witch's Relaxation Spot",4,"Event"],[2440,"Queen's Voyage",3,"Event"],[2442,"The One Who Stands at the Summit of Riders",5,"Shop"],[2443,"Heroic Spirit Stellar Journey: Ashiya Douman",4,"Campaign"],[2444,"Heroic Spirit Stellar Journey: Altera",4,"Campaign"],[2445,"Heroic Spirit Stellar Journey: Artoria Pendragon",4,"Campaign"],[2446,"Heroic Spirit Stellar Journey: Utsumi Erice",4,"Campaign"],[2447,"Heroic Spirit Stellar Journey: Kukulcan",4,"Campaign"],[2448,"Heroic Spirit Stellar Journey: Quetzalcoatl",4,"Campaign"],[2449,"Heroic Spirit Stellar Journey: Columbus",4,"Campaign"],[2450,"Heroic Spirit Stellar Journey: Typhon Ephemeros",4,"Campaign"],[2451,"Heroic Spirit Stellar Journey: Mysterious Heroine X",4,"Campaign"],[2452,"Heroic Spirit Stellar Journey: Frankenstein",4,"Campaign"],[2453,"Heroic Spirit Stellar Journey: Paul Bunyan",4,"Campaign"],[2454,"Heroic Spirit Stellar Journey: Mélusine",4,"Campaign"],[2455,"Heroic Spirit Stellar Journey: Yamato Takeru",4,"Campaign"],[2456,"Heroic Spirit Stellar Journey: Rama",4,"Campaign"],[2457,"Heroic Spirit Stellar Journey: Lancelot",4,"Campaign"],[2458,"Heroic Spirit Stellar Journey: Leonardo da Vinci",4,"Campaign"],[2459,"Capital Maelstrom",5,"Event"],[2460,"On a Night of Fireflies",4,"Event"],[2461,"Gudaguda Shinsegumi",3,"Event"],[2462,"Dual Burning",5,"Event"],[2469,"Into the Battlefield",5,"Gacha"],[2470,"When the Flowers Fall ",4,"Gacha"],[2471,"Hunting",3,"Gacha"],[2472,"The Pinnacle of Assassins",5,"Shop"],[2473,"Space Mistress",5,"Event"],[2474,"Under Slum",4,"Event"],[2475,"Mars Shooting",3,"Event"],[2476,"To Myself from a Distant Planet",5,"Event"],[2479,"Heroic Spirit Stellar Journey: Asterios",4,"Campaign"],[2480,"Heroic Spirit Stellar Journey: Anastasia",4,"Campaign"],[2481,"Heroic Spirit Stellar Journey: Euryale",4,"Campaign"],[2482,"Heroic Spirit Stellar Journey: Pope Johanna",4,"Campaign"],[2483,"Heroic Spirit Stellar Journey: Kondo Isami",4,"Campaign"],[2484,"Heroic Spirit Stellar Journey: James Moriarty",4,"Campaign"],[2485,"Heroic Spirit Stellar Journey: Sherlock Holmes",4,"Campaign"],[2486,"Heroic Spirit Stellar Journey: Charlotte Corday",4,"Campaign"],[2487,"Heroic Spirit Stellar Journey: Suzuka Gozen",4,"Campaign"],[2488,"Heroic Spirit Stellar Journey: Dobrynya Nikitich",4,"Campaign"],[2489,"Heroic Spirit Stellar Journey: Hijikata Toshizo",4,"Campaign"],[2490,"Heroic Spirit Stellar Journey: Biscione",4,"Campaign"],[2491,"Heroic Spirit Stellar Journey: Bradamante",4,"Campaign"],[2492,"Heroic Spirit Stellar Journey: Louhi",4,"Campaign"],[2493,"Pilgrimage Festival/Fourteen",4,"Campaign"],[2494,"The Pinnacle of Bowmanship",5,"Shop"],[2495,"Heroic Spirit Stellar Journey: Abigail Williams",4,"Campaign"],[2496,"Heroic Spirit Stellar Journey: Andromeda",4,"Campaign"],[2497,"Heroic Spirit Stellar Journey: Ishtar",4,"Campaign"],[2498,"Heroic Spirit Stellar Journey: Illyasviel",4,"Campaign"],[2499,"Heroic Spirit Stellar Journey: Ereshkigal",4,"Campaign"],[2500,"Heroic Spirit Stellar Journey: Kriemhild",4,"Campaign"],[2501,"Heroic Spirit Stellar Journey: Siegfried",4,"Campaign"],[2502,"Heroic Spirit Stellar Journey: Dante Alighieri",4,"Campaign"],[2503,"Heroic Spirit Stellar Journey: Habetrot",4,"Campaign"],[2504,"Heroic Spirit Stellar Journey: Himiko",4,"Campaign"],[2505,"Heroic Spirit Stellar Journey: Miss Crane",4,"Campaign"],[2506,"Heroic Spirit Stellar Journey: Miyamoto Musashi",4,"Campaign"],[2507,"Heroic Spirit Stellar Journey: Yagyu Tajima-no-kami Munenori",4,"Campaign"],[2508,"Heroic Spirit Stellar Journey: Lilith",4,"Campaign"],[2509,"Those from Chaldea",5,"Shop"],[2510,"The Pinnacle of Mages",5,"Shop"],[2512,"Heroic Spirit Apex: Ashiya Douman",4,"Campaign"],[2513,"Heroic Spirit Apex: Altria Pendragon",4,"Campaign"],[2514,"Heroic Spirit Apex: Yan Qing",4,"Campaign"],[2515,"Heroic Spirit Apex: Orion",4,"Campaign"],[2516,"Heroic Spirit Apex: Kama",4,"Campaign"],[2517,"Heroic Spirit Apex: Gilgamesh",4,"Campaign"],[2518,"Heroic Spirit Apex: Sakata Kintoki",4,"Campaign"],[2519,"Heroic Spirit Apex: Sigurd",4,"Campaign"],[2520,"Heroic Spirit Apex: Jeanne d'Arc",4,"Campaign"],[2521,"Heroic Spirit Apex: Scáthach-Skadi",4,"Campaign"],[2522,"Heroic Spirit Apex: Space Ishtar",4,"Campaign"],[2523,"Heroic Spirit Apex: Tomoe Gozen",4,"Campaign"],[2524,"Heroic Spirit Apex: Nemo",4,"Campaign"],[2525,"Heroic Spirit Apex: BB",4,"Campaign"],[2526,"Heroic Spirit Apex: Mash Kyrielight",4,"Campaign"],[2527,"Heroic Spirit Apex: Mélusine",4,"Campaign"],[2528,"Heroic Spirit Apex: Morgan",4,"Campaign"],[2529,"Heroic Spirit Apex: Koyanskaya of Darkness",4,"Campaign"],[2530,"Heroic Spirit Apex: Leonardo da Vinci",4,"Campaign"],[2531,"Heroic Spirit Apex: Lady Avalon",4,"Campaign"],[2532,"Heroic Spirit Apex: Romulus=Quirinus",4,"Campaign"],[2534,"Dawn",5,"Event"],[2535,"Prayer",4,"Event"],[2536,"Fine Horse",3,"Event"],[2537,"Atlas' Amulet",4,"Campaign"],[2540,"The Day of the First Mission",4,"Campaign"],[2541,"Visitor",4,"Campaign"],[2542,"Satellite Station 26",4,"Campaign"],[2543,"Flowers Offered to the Goddess",5,"Event"],[2544,"Grooming Comb",4,"Event"],[2545,"Yellow Turban Gardener",3,"Event"],[2546,"Capricious Flowerbuds",5,"Event"],[2550,"The Nameless Soldier",4,"Campaign"],[2551,"ダブル・スイート",5,"Event"],[2552,"スノー・ハート",4,"Event"],[2553,"バレンタイン・ランチ",3,"Event"],[2554,"サイン・オブ・スプリング",5,"Event"],[2583,"記憶の大図書館",5,"Shop"],[2584,"トラジェクトリー・オブ・フェイト",5,"Event"],[2585,"ファイブ・ラウンズ",5,"Event"],[2586,"プレゼント・フォー・ユー",5,"Event"],[2587,"Studio Legale G",4,"Event"],[2588,"Breaching",4,"Event"],[2589,"フェアリー・ファーム",4,"Event"],[2590,"グランド・ギャザリング",3,"Event"],[2591,"ライト・オブ・ナイト",3,"Event"],[2592,"ドラバス～10th記念ライブ～",3,"Event"],[2593,"翠嶺の息吹",3,"Event"],[2595,"春の園へ",4,"Campaign"],[2596,"月海原生徒会の会計",5,"Gacha"],[2597,"裏庭の厨房",4,"Gacha"],[2598,"選ばれし者",3,"Gacha"],[2599,"花霞",5,"Event"],[2600,"輝く石のように",4,"Event"],[2601,"もてなしの流儀",3,"Event"],[2602,"アライアンス",5,"Event"],[2607,"流転の剣聖",5,"Shop"],[2608,"未だ見ぬ勝利",5,"Gacha"],[2609,"苦い記憶",4,"Gacha"],[2610,"惨禍の萌芽",3,"Gacha"],[2612,"バイブレント・カラー",5,"Event"],[2613,"彫姫の行進",4,"Event"],[2614,"フォレスト・エデュケーター",3,"Event"],[2615,"ドリーム・プール",5,"Event"],[2619,"星見の回廊",4,"Campaign"],[2620,"英霊学装：アーサー・ペンドラゴン",4,"Campaign"],[2621,"英霊学装：アスカラポス",4,"Campaign"],[2622,"英霊学装：アスクレピオス",4,"Campaign"],[2623,"英霊学装：アムール〔カレン〕",4,"Campaign"],[2624,"英霊学装：アルトリア・ペンドラゴン〔オルタ〕",4,"Campaign"],[2625,"英霊学装：アレキサンダー",4,"Campaign"],[2626,"英霊学装：アンデルセン",4,"Campaign"],[2627,"英霊学装：イアソン",4,"Campaign"],[2628,"英霊学装：イリヤスフィール",4,"Campaign"],[2629,"英霊学装：インドラ",4,"Campaign"],[2630,"英霊学装：ヴァン・ゴッホ〔マイナー〕",4,"Campaign"],[2631,"英霊学装：エドワード・ティーチ",4,"Campaign"],[2632,"英霊学装：燕青",4,"Campaign"],[2633,"英霊学装：刑部姫",4,"Campaign"],[2634,"英霊学装：オジマンディアス",4,"Campaign"],[2635,"英霊学装：カーマ",4,"Campaign"],[2636,"英霊学装：葛飾北斎",4,"Campaign"],[2637,"英霊学装：巌窟王　モンテ・クリスト",4,"Campaign"],[2638,"英霊学装：ギルガメッシュ",4,"Campaign"],[2639,"英霊学装：クー・フーリン",4,"Campaign"],[2640,"英霊学装：クー・フーリン〔オルタ〕",4,"Campaign"],[2641,"英霊学装：ジェームズ・モリアーティ",4,"Campaign"],[2642,"英霊学装：ジャック・ド・モレー",4,"Campaign"],[2643,"英霊学装：シャルロット・コルデー",4,"Campaign"],[2644,"英霊学装：酒呑童子",4,"Campaign"],[2645,"英霊学装：ジュネス・クレーン",4,"Campaign"],[2646,"英霊学装：女王メイヴ",4,"Campaign"],[2647,"英霊学装：諸葛孔明〔エルメロイⅡ世〕",4,"Campaign"],[2648,"英霊学装：徐福",4,"Campaign"],[2649,"英霊学装：清少納言",4,"Campaign"],[2650,"英霊学装：高杉晋作",4,"Campaign"],[2651,"英霊学装：ダンテ・アリギエーリ",4,"Campaign"],[2652,"英霊学装：ツタンカーメン",4,"Campaign"],[2653,"英霊学装：テノチティトラン",4,"Campaign"],[2654,"英霊学装：デメテル",4,"Campaign"],[2655,"英霊学装：テュフォン・エフェメロス＆イプシロン",4,"Campaign"],[2656,"英霊学装：藤堂平助",4,"Campaign"],[2657,"英霊学装：ドゥルガー",4,"Campaign"],[2658,"英霊学装：ネモ",4,"Campaign"],[2659,"英霊学装：ネモ／ノア",4,"Campaign"],[2660,"英霊学装：ネロ・クラウディウス",4,"Campaign"],[2661,"英霊学装：バーヴァン・シー",4,"Campaign"],[2662,"英霊学装：パーシヴァル",4,"Campaign"],[2663,"英霊学装：花咲翁",4,"Campaign"],[2664,"英霊学装：原田左之助",4,"Campaign"],[2665,"英霊学装：パリス",4,"Campaign"],[2666,"英霊学装：フランケンシュタイン",4,"Campaign"],[2667,"英霊学装：ブリトマート",4,"Campaign"],[2668,"英霊学装：フローラ",4,"Campaign"],[2669,"英霊学装：マシュ・キリエライト",4,"Campaign"],[2670,"英霊学装：マルタ",4,"Campaign"],[2671,"英霊学装：宮本伊織",4,"Campaign"],[2672,"英霊学装：宮本武蔵",4,"Campaign"],[2673,"英霊学装：メタトロン・ジャンヌ",4,"Campaign"],[2674,"英霊学装：メリュジーヌ",4,"Campaign"],[2675,"英霊学装：モルガン",4,"Campaign"],[2676,"英霊学装：蘭陵王",4,"Campaign"],[2677,"英霊学装：レオナルド・ダ・ヴィンチ",4,"Campaign"],[2678,"英霊学装：レディ・アヴァロン",4,"Campaign"],[2679,"英霊学装：ロウヒ",4,"Campaign"],[2680,"アフター・パーティー",5,"Event"],[2681,"フレームド・モーメント",4,"Event"],[2682,"アズ・ユージュアル",3,"Event"],[2683,"人理の徒",5,"Gacha"],[2685,"「FGO 藤丸立香はわからない」Season4",4,"Campaign"],[2686,"豊穣の海",5,"Event"],[2687,"サマー・アーマー",4,"Event"],[2688,"幽世の使者",3,"Event"],[2689,"マブイ・ロード",5,"Event"],[2690,"シープ・イズ・ザ・ゴート",4,"Event"],[2691,"わくわくざぶーん～沖縄支店～",3,"Event"],[2692,"ル・グテ",5,"Event"],[2693,"渓谷の神秘",5,"Event"],[2701,"ガン・ディーラー",5,"Shop"],[2702,"ヴァリアント・ウルフ",5,"Event"],[2703,"フォーチュン・テラー",4,"Event"],[2704,"トーメンテッド・ガーディアン",3,"Event"],[2705,"ピース・オブ・メモリー",5,"Event"]].forEach(([no, name, rar, kind]) => CE.set(no, { no, name, rar, kind, key: norm(name), sub: `${rar}★ ${kind}` }));
+
+  // Decode answers: base64 of 16-bit values XORed with a cycling key, laid out stage-major.
+  const B = atob(ENC.d);
+  const FLAT = Array.from({ length: B.length / 2 }, (_, i) => ((B.charCodeAt(i * 2) ^ ENC.k[i % ENC.k.length]) << 8) | (B.charCodeAt(i * 2 + 1) ^ ENC.k[i % ENC.k.length]));
+
+  // Route blob (skill order per wave): UTF-8 JSON XORed with its own key. Holds unit nicknames and
+  // skill names too, since those would name the hidden servants.
+  const RT = ENC.r ? JSON.parse(decodeURIComponent(Array.from(atob(ENC.r.d), (c, i) => "%" + (c.charCodeAt(0) ^ ENC.r.k[i % ENC.r.k.length]).toString(16).padStart(2, "0")).join(""))) : null;
+
+  const SLOTS = CFG.slots;
+  const N = SLOTS.length;
+  const IDX = [...Array(N).keys()];
+
+  // Faces: every servant is drawn from the same sprite at the same size, so a face never hints at an answer.
+  const FACES = CFG.faces;
+  // No-art mode (faces: false): an original badge, the servant's initials on their class colour.
+  const CLASS_COLOR = { Saber: "#2f5fb3", Archer: "#b8382c", Lancer: "#2a8a68", Rider: "#7b4fc0", Caster: "#9a7413", Assassin: "#4a4f5c", Berserker: "#8f2a2a",
+    Ruler: "#b5921f", Avenger: "#4e2766", "Moon Cancer": "#24708c", "Alter Ego": "#7a2f56", Foreigner: "#33357f", Pretender: "#62652a", Shielder: "#5d6d86", Beast: "#6b1010" };
+  const badge = (no, size) => {
+    const s = SV.get(no), name = (s?.name || "?").replace(/\s*·\s*No\.\d+$/, "").replace(/\s*\(.*?\)/g, "");
+    const words = name.split(/[\s-]+/).filter(Boolean);
+    const ini = words.length > 1 ? words.slice(0, 2).map(w => w[0].toUpperCase()).join("") : (words[0] || "?").slice(0, 2).replace(/^./, c => c.toUpperCase());
+    return `<span class="face badge" style="--s:${size}px;--bc:${CLASS_COLOR[s?.cls] || "#5b6680"}" aria-hidden="true">${esc(ini)}</span>`;
+  };
+  const face = (no, size) => {
+    if (!FACES) return badge(no, size);
+    const i = FACES.index[no];
+    if (i == null) return `<span class="face none" style="--s:${size}px" aria-hidden="true">${esc((SV.get(no)?.name || "?")[0])}</span>`;
+    return `<span class="face" style="--s:${size}px;--fx:${i % FACES.cols};--fy:${Math.floor(i / FACES.cols)}" aria-hidden="true"></span>`;
+  };
+  // CE icons with the in-game MLB star in the corner. Only pool and shown CEs have one.
+  const ceIco = (no, mlb, size) => CFG.ceIcons?.[no]
+    ? `<span class="ce-ico${mlb ? " mlb" : ""}" style="--s:${size}px" ${mlb ? 'title="MLB"' : ""}><img src="${CFG.ceIcons[no]}" alt="" width="${size}" height="${size}" decoding="async"></span>` : "";
+  // Battle sprites: shown units' are public; hidden slots' file names sit in their own obfuscated blob.
+  const HIDDEN_SPRITES = ENC.s ? JSON.parse(decodeURIComponent(Array.from(atob(ENC.s.d), (c, i) => "%" + (c.charCodeAt(0) ^ ENC.s.k[i % ENC.s.k.length]).toString(16).padStart(2, "0")).join(""))) : [];
+  const spriteSeen = new Set();   // slots whose sprite was already on screen, so only a new reveal pops
+  let spriteInit = false;
+  const spriteBox = (src, key) => {
+    if (!src) return "";
+    const pop = spriteInit && !spriteSeen.has(key);
+    spriteSeen.add(key);
+    return `<img class="sprite-head${pop ? " pop" : ""}" src="${esc(src)}" alt="" width="64" height="64" decoding="async">`;
+  };
+  const facePh = size => `<span class="face q" style="--s:${size}px" aria-hidden="true"></span>`;
+
+  const cmp = (g, a, up, down) => g === a ? "" : (a > g ? ` ${up}` : ` ${down}`);
+  const chip = (ok, text) => `<span class="chip${ok ? " y" : ""}">${text}</span>`;
+
+  const KINDS = {
+    servant: {
+      title: "Servants", unit: "servant", pool: SV, input: "search", near: true,
+      key: `<span><i class="sw" style="background:var(--hit)"></i>Right servant for this slot</span><span><i class="sw" style="background:var(--near)"></i>On the team, but in another slot</span><span><i class="sw" style="background:var(--miss)"></i>Not on the team</span><span>Chips compare against this slot's answer. Green matches. ▲/▼ means the answer's rarity is higher or lower.</span>`,
+      chips: (g, a) => chip(g.cls === a.cls, esc(g.cls)) + chip(g.rar === a.rar, `${g.rar}★${cmp(g.rar, a.rar, "▲", "▼")}`) + chip(g.card === a.card, g.card)
+        + chip(g.np === a.np, g.np === "Support" ? "Support NP" : `${g.np} NP`) + chip(g.attr === a.attr, g.attr),
+      missLabel: "Not on the team",
+    },
+    ce: {
+      title: "Craft Essences", unit: "CE", pool: CE, input: "search", near: true,
+      key: `<span><i class="sw" style="background:var(--hit)"></i>Right CE for this slot</span><span><i class="sw" style="background:var(--near)"></i>Used elsewhere on the team</span><span><i class="sw" style="background:var(--miss)"></i>Not used</span><span>Chips: green matches. ▲ means the answer is higher rarity or a newer CE (higher CE No.), ▼ lower or older.</span>`,
+      chips: (g, a) => chip(g.rar === a.rar, `${g.rar}★${cmp(g.rar, a.rar, "▲", "▼")}`) + chip(g.no === a.no, `No.${g.no}${cmp(g.no, a.no, "▲ newer", "▼ older")}`) + chip(g.kind === a.kind, g.kind),
+      missLabel: "Not used",
+    },
+    np: {
+      title: "NP Levels", unit: "NP level", pool: null, input: "np", near: false,
+      key: `<span><i class="sw" style="background:var(--hit)"></i>Right NP level</span><span><i class="sw" style="background:var(--miss)"></i>Wrong</span><span>▲ means the real NP level is higher, ▼ lower.</span>`,
+      chips: () => "",
+      missLabel: "Wrong",
+    },
+    route: {
+      title: "Skill Order", unit: "wave", pool: null, input: "route", near: false,
+      key: `<span><i class="sw" style="background:var(--hit)"></i>Right action, valid order</span><span><i class="sw" style="background:var(--near)"></i>Used this wave, but out of order</span><span><i class="sw" style="background:var(--miss)"></i>Not used this wave</span><span><i class="sw" style="background:var(--miss);outline:2px dashed var(--near);outline-offset:-2px"></i>Used in a different wave</span><span>Any order that works counts: skills go before NPs, and NPs must be in the right chain order.</span>`,
+      chips: () => "",
+      missLabel: "Not quite",
+    },
+  };
+  // Banded CE stage: answers are ce*10 + band, bands being quarters of the rarity's max level.
+  // Keep CE_MAX in step with build-game.js.
+  // Band 1 is "Not MLB" with no range (non-MLB caps vary). Bands 2-5 are the quarters 1-4, MLB.
+  const CE_MAX = { 3: 60, 4: 80, 5: 100 };
+  const QUARTER = [0, 0, 1, 2, 3, 4];
+  const bandRange = (no, b) => { const q = CE_MAX[CE.get(no).rar] / 4, r = QUARTER[b]; return [r === 1 ? 1 : (r - 1) * q + 1, r * q]; };
+  const bandTag = b => b === 1 ? "not MLB" : "MLB";
+  const bandText = (no, b) => { if (b === 1) return "Not MLB"; const [a, z] = bandRange(no, b); return `Lv${a}–${z} · MLB`; };
+  const BANDED = {
+    input: "ceband", pool: null, near: true, missLabel: "Not this one",
+    key: `<span><i class="sw" style="background:var(--hit)"></i>Right CE and level range</span><span><i class="sw" style="background:var(--near)"></i>That exact CE and range is on another slot</span><span><i class="sw" style="background:var(--miss)"></i>Not this one</span><span>Only the event CEs are in play. Pick "Not MLB" (any level), or an MLB level range: quarters of the CE's max level (60 for 3★, 80 for 4★, 100 for 5★). Chips: green matches; ▲/▼ means the answer's rarity or level is higher or lower.</span>`,
+    chips: (g, a) => {
+      const gc = Math.floor(g / 10), ac = Math.floor(a / 10), gb = g % 10, ab = a % 10, G = CE.get(gc), A = CE.get(ac);
+      const lvl = gb === ab ? (ab === 1 ? "Not MLB, right" : "Level right")
+        : ab === 1 ? "It's not MLB" : gb === 1 ? "It's MLB"
+        : `Level${cmp(gb, ab, " ▲ higher", " ▼ lower")}`;
+      return chip(gc === ac, gc === ac ? "Right CE" : `${G.rar}★${cmp(G.rar, A.rar, "▲", "▼")}`) + chip(gb === ab, lvl);
+    },
+  };
+  let slotStage = 0;
+  const STAGES = CFG.stages.map(s => {
+    if (s.kind === "route") return { ...KINDS.route, kind: "route", max: s.tries, cols: RT.waves.length, ans: [] };
+    const ans = FLAT.slice(slotStage * N, slotStage * N + N); slotStage++;
+    const base = s.kind === "ce" && s.pool ? { ...KINDS.ce, ...BANDED, cePool: s.pool } : KINDS[s.kind];
+    return { ...base, kind: s.kind, max: s.tries, cols: N, ans };
+  });
+  const ceNo = v => STAGES.find(s => s.kind === "ce")?.input === "ceband" ? Math.floor(v / 10) : v;
+  const COLS = st => [...Array(STAGES[st].cols).keys()];
+  const stageOf = kind => STAGES.findIndex(s => s.kind === kind);
+  const SERV = stageOf("servant"), CES = stageOf("ce"), NPS = stageOf("np"), ROUTE = stageOf("route");
+
+  // ---- route grading ----
+  const actWho = c => Math.floor(c / 10) === 9 ? "MC" : RT.units[Math.floor(c / 10)].nick;
+  const actKey = c => c % 10 === 4 ? "NP" : `S${c % 10}`;
+  const actLabel = c => `${actWho(c)} ${actKey(c)}`;
+  const actIcon = c => { const u = Math.floor(c / 10), a = c % 10; return (a === 4 ? RT.npIcon : u === 9 ? RT.mc.icons?.[a - 1] : RT.units[u].icons?.[a - 1]) || ""; };
+  const iconImg = (c, cls) => actIcon(c) ? `<img class="${cls}" src="${actIcon(c)}" alt="" width="28" height="28" decoding="async">` : "";
+  const actName = c => { const u = Math.floor(c / 10), a = c % 10; return u === 9 ? RT.mc.skills[a - 1] : a === 4 ? RT.units[u].np : RT.units[u].skills[a - 1]; };
+  const grade = (w, g) => {
+    const W = RT.waves[w], pos = new Map(g.map((c, k) => [c, k]));
+    return g.map(c => {
+      if (!W.set.includes(c)) return RT.waves.some((o, j) => j !== w && o.set.includes(c)) ? "other" : "miss";
+      return W.before.every(([a, b]) => (a !== c && b !== c) || (pos.has(a) && pos.has(b) && pos.get(a) < pos.get(b))) ? "hit" : "near";
+    });
+  };
+  const solvedBy = (w, g) => g.length === RT.waves[w].set.length && grade(w, g).every(v => v === "hit");
+  // Cooldown lock: a skill an earlier, finished wave used is on cooldown later. NPs and route.reusable never lock.
+  const lockedBy = (st, w, c) => c % 10 === 4 || (RT.reusable || []).includes(c) ? -1
+    : RT.waves.findIndex((o, j) => j < w && over(st, j) && o.set.includes(c));
+  const draft = {};
+
+  const STORE = CFG.storageKey;
+  const fresh = () => ({ g: STAGES.map((_, st) => COLS(st).map(() => [])), h: STAGES.map((_, st) => COLS(st).map(() => 0)), view: 0 });
+  let state = fresh();
+  try {
+    // Keep saved stages that still fit; a stage added since the save starts empty.
+    const s = JSON.parse(localStorage.getItem(STORE) || "null");
+    if (s && Array.isArray(s.g)) state = { g: STAGES.map((S, st) => Array.isArray(s.g[st]) && s.g[st].length === S.cols ? s.g[st] : COLS(st).map(() => [])), view: +s.view || 0, h: STAGES.map((S, st) => Array.isArray(s.h?.[st]) && s.h[st].length === S.cols ? s.h[st] : COLS(st).map(() => 0)) };
+  } catch {}
+  const save = () => { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch {} };
+
+  const won = (st, i) => STAGES[st].kind === "route" ? state.g[st][i].some(g => solvedBy(i, g)) : state.g[st][i].includes(STAGES[st].ans[i]);
+  // A hint uses up a try, so tries used = guesses + hints.
+  const hintsOf = (st, i) => state.h?.[st]?.[i] || 0;
+  const used = (st, i) => state.g[st][i].length + hintsOf(st, i);
+  const over = (st, i) => won(st, i) || used(st, i) >= STAGES[st].max;
+  const stageOver = st => COLS(st).every(i => over(st, i));
+  const unlocked = st => st === 0 || stageOver(st - 1);
+  const current = () => { for (let st = 0; st < STAGES.length; st++) if (!stageOver(st)) return st; return STAGES.length; };
+  const verdict = (st, v, i) => {
+    if (STAGES[st].kind === "route") { const gr = grade(i, v); return solvedBy(i, v) ? "hit" : gr.includes("hit") ? "near" : "miss"; }
+    return v === STAGES[st].ans[i] ? "hit" : (STAGES[st].near && STAGES[st].ans.includes(v)) ? "near" : "miss";
+  };
+  const nameOf = (st, v) => STAGES[st].kind === "np" ? `NP${v}`
+    : STAGES[st].input === "ceband" ? `${CE.get(Math.floor(v / 10)).name} · ${bandText(Math.floor(v / 10), v % 10)}`
+    : STAGES[st].pool.get(v).name;
+
+  function header() {
+    document.title = CFG.title;
+    const t = CFG.title.split(" ");
+    $("title").innerHTML = t.length > 1 ? `${esc(t.slice(0, -1).join(" "))} <span>${esc(t[t.length - 1])}</span>` : esc(CFG.title);
+    $("eyebrow").textContent = CFG.eyebrow || "";
+    $("lede").textContent = CFG.lede || "";
+    $("mc").innerHTML = (CFG.notes || []).map(([k, v]) => `<span>${esc(k)} <b>${esc(v)}</b></span>`).join("");
+    $("footer").textContent = CFG.footer + (CFG.spriteCredit ? " " + CFG.spriteCredit : "");
+    const root = document.documentElement.style;
+    root.setProperty("--units", String(CFG.shown.length + N));
+    root.setProperty("--hidden", String(N));
+    root.setProperty("--stages", String(STAGES.length));
+    if (FACES) root.setProperty("--fcols", String(FACES.cols));
+  }
+
+  function renderQuest() {
+    const q = CFG.quest;
+    if (!q) return;
+    const fmt = n => n.toLocaleString("en-US");
+    const meta = [q.event, q.ap != null ? `${q.ap} AP` : "", q.level ? `Lv ${q.level}` : ""].filter(Boolean).map(esc).join(" · ");
+    const waves = q.waves.map((w, i) => `<div class="wave"><div class="wave-h"><span>Wave ${i + 1}</span><span>${fmt(w.reduce((n, e) => n + e.hp, 0))} HP</span></div>
+      ${w.map(e => `<div class="enemy${e.sprite ? " has-sprite" : ""}">${e.sprite ? `<img class="e-sprite" src="${esc(e.sprite)}" alt="" width="44" height="44" loading="lazy" decoding="async">` : ""}<span class="e-name">${esc(e.name)}</span><span class="e-hp">${fmt(e.hp)}</span><span class="e-cls">${esc(e.cls)}${e.bars ? ` · ${e.bars} extra HP bar${e.bars > 1 ? "s" : ""}` : ""}</span></div>`).join("")}</div>`).join("");
+    $("quest").innerHTML = `<div class="q-head"><span class="q-name">${esc(q.name)}</span><span class="q-meta">${meta}</span></div>
+      ${q.notes?.length ? `<ul class="q-notes">${q.notes.map(n => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}
+      <div class="waves" style="--waves:${Math.min(q.waves.length, 3)}">${waves}</div>`;
+    $("quest-sec").hidden = false;
+  }
+
+  function factCell(st, i, text, pre = "") {
+    if (!over(st, i)) return `<dd class="q">?</dd>`;
+    return `<dd class="${won(st, i) ? "won" : "lost"}${pre ? " ce-dd" : ""}">${pre}${pre ? `<span>${esc(text)}</span>` : esc(text)}</dd>`;
+  }
+
+  function renderFormation() {
+    const end = current() === STAGES.length;
+    const shown = CFG.shown.map(u => `<div class="slot fixed ${u.style || ""}"><span class="tag">${esc(u.label)}</span><div class="who-row">${spriteBox(u.sprite, "s" + u.servant) || face(u.servant, 48)}<span class="name">${esc(SV.get(u.servant).name)}</span></div>
+      ${u.facts?.length ? `<dl class="facts">${u.facts.map(([k, v]) => k === "CE" && ceIco(u.ce, u.ceMlb, 28)
+        ? `<dt>${esc(k)}</dt><dd class="ce-dd">${ceIco(u.ce, u.ceMlb, 28)}<span>${esc(v)}</span></dd>`
+        : `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>` : ""}
+      ${u.extra?.length ? `<ul class="extra">${u.extra.map(e => `<li>${esc(e)}</li>`).join("")}</ul>` : ""}</div>`).join("");
+    const hidden = SLOTS.map((sl, i) => {
+      const svNo = SERV < 0 ? sl.servant : over(SERV, i) ? STAGES[SERV].ans[i] : null;
+      const sv = svNo != null ? `<div class="who-row">${spriteBox(HIDDEN_SPRITES[i], "h" + i) || face(svNo, 48)}<span class="name">${esc(SV.get(svNo).name)}</span></div>`
+        : `<div class="who-row">${facePh(HIDDEN_SPRITES[i] ? 64 : 48)}<span class="name q">?</span></div>`;
+      let facts = "";
+      if (CES >= 0) {
+        const a = STAGES[CES].ans[i], banded = STAGES[CES].input === "ceband";
+        facts += `<dt>CE</dt>${factCell(CES, i, `${CE.get(ceNo(a)).name}${sl.ceDetail ? ` · ${sl.ceDetail}` : ""}`, ceIco(ceNo(a), banded && a % 10 >= 2, 28))}`;
+      }
+      else if (sl.ceText) facts += `<dt>CE</dt><dd>${esc(sl.ceText)}</dd>`;
+      if (NPS >= 0) facts += `<dt>NP</dt>${factCell(NPS, i, `NP${STAGES[NPS].ans[i]}`)}`;
+      else if (sl.npText) facts += `<dt>NP</dt><dd>${esc(sl.npText)}</dd>`;
+      const extra = end && sl.extra?.length ? `<ul class="extra">${sl.extra.map(e => `<li>${esc(e)}</li>`).join("")}</ul>` : "";
+      return `<div class="slot ${sl.style || ""}"><span class="tag">${esc(sl.name)}</span>${sv}${facts ? `<dl class="facts">${facts}</dl>` : ""}${extra}</div>`;
+    }).join("");
+    $("formation").innerHTML = shown + hidden;
+    spriteInit = true;
+    renderDock();
+  }
+
+  function unitFace(u, size) {
+    const nShown = CFG.shown.length;
+    if (u < nShown) { const s = CFG.shown[u]; return s.sprite ? `<img class="lu-img" src="${esc(s.sprite)}" alt="" width="${size}" height="${size}" decoding="async">` : face(s.servant, size); }
+    const i = u - nShown, no = SERV < 0 ? SLOTS[i].servant : STAGES[SERV].ans[i];
+    return HIDDEN_SPRITES[i] ? `<img class="lu-img" src="${esc(HIDDEN_SPRITES[i])}" alt="" width="${size}" height="${size}" decoding="async">` : face(no, size);
+  }
+
+  // Pinned strip: one mini card per unit, with what is known so far (portrait, CE icon, NP).
+  function renderDock() {
+    const mini = (img, name, ce, np, cls) => `<div class="dk ${cls}" title="${esc(name)}">${img}<span class="dk-name">${esc(name)}</span><span class="dk-meta">${ce}${np ? `<b>${esc(np)}</b>` : ""}</span></div>`;
+    const dimg = (src, no) => src ? `<img class="dk-img" src="${esc(src)}" alt="" width="40" height="40" decoding="async">` : face(no, 40);
+    const shown = CFG.shown.map(u => {
+      const np = (u.facts || []).find(([k]) => k === "NP")?.[1] || "";
+      return mini(dimg(u.sprite, u.servant), SV.get(u.servant).name.split(" (")[0], ceIco(u.ce, u.ceMlb, 18), np, "fixed");
+    });
+    const hidden = SLOTS.map((sl, i) => {
+      const svNo = SERV < 0 ? sl.servant : over(SERV, i) ? STAGES[SERV].ans[i] : null;
+      const img = svNo != null ? dimg(HIDDEN_SPRITES[i], svNo) : `<span class="dk-img dk-q" aria-hidden="true">?</span>`;
+      const ce = CES >= 0 && over(CES, i) ? ceIco(ceNo(STAGES[CES].ans[i]), STAGES[CES].input === "ceband" && STAGES[CES].ans[i] % 10 >= 2, 18) : "";
+      const np = NPS >= 0 && over(NPS, i) ? `NP${STAGES[NPS].ans[i]}` : "";
+      return mini(img, svNo != null ? SV.get(svNo).name.split(" (")[0] : sl.short, ce, np, sl.style || "");
+    });
+    dockMinis = [...shown, ...hidden];
+    $("dock").innerHTML = `<div class="dk-wave" id="dk-wave" hidden></div><div class="dk-row" id="dk-row"></div>`;
+    renderDockTeam(dockMinis.map((_, k) => k));
+    dockWave = -1;
+    syncDockWave();
+  }
+
+  // ---- line-up: positions 0-2 front line, 3-5 back line; unit ids are party order (shown, then slots) ----
+  const FRONT = 3;
+  const startLineup = () => RT ? RT.units.map((_, k) => k) : [];
+  function applyEvent(line, ev) {
+    const l = line.slice(), [kind, a, b] = ev;
+    if (kind === "swap") { const pa = l.indexOf(a), pb = l.indexOf(b); if (pa >= 0 && pb >= 0) [l[pa], l[pb]] = [l[pb], l[pa]]; }
+    if (kind === "retreat") {
+      const p = l.indexOf(a);
+      if (p >= 0 && p < FRONT && l.length > FRONT) { const back = l.slice(FRONT); l[p] = back.shift(); back.push(a); l.splice(FRONT, back.length, ...back); }
+    }
+    return l;
+  }
+  // Line-up at the start of wave w: earlier waves' changes apply only while each of those waves is over,
+  // so nothing about an unsolved wave leaks.
+  function lineupAt(w) {
+    let l = startLineup();
+    const st = ROUTE;
+    for (let k = 0; k < w && st >= 0; k++) { if (!over(st, k)) break; for (const ev of RT.waves[k].lineup || []) l = applyEvent(l, ev); }
+    return l;
+  }
+  const unitName = u => RT?.units[u]?.nick || "?";
+  function lineupStrip(l, moved = new Set()) {
+    return `<div class="lu">${l.map((u, p) => `${p === FRONT ? '<span class="lu-sep" aria-hidden="true"></span>' : ""}<span class="lu-u${moved.has(u) ? " moved" : ""}" title="${esc(unitName(u))}">${unitFace(u, 30)}</span>`).join("")}</div>`;
+  }
+  // Wave card, once the wave is over: start line-up, then each change with an arrow.
+  function lineupSequence(w) {
+    const evs = RT.waves[w].lineup || [];
+    if (!evs.length) return "";
+    let l = lineupAt(w);
+    let html = lineupStrip(l);
+    for (const ev of evs) {
+      const [kind, a, b] = ev;
+      const next = applyEvent(l, ev);
+      const moved = new Set(next.filter((u, p) => l[p] !== u));
+      const label = kind === "swap" ? `Order Change: ${unitName(a)} ⇄ ${unitName(b)}`
+        : `${unitName(a)} retreats · ${unitName(next[l.indexOf(a)])} steps in`;
+      html += `<div class="lu-step"><span class="lu-arrow" aria-hidden="true">↓</span><span>${esc(label)}</span></div>` + lineupStrip(next, moved);
+      l = next;
+    }
+    return `<span class="r-label">Line-up</span><div class="lu-seq">${html}</div>`;
+  }
+
+  // Skill-order stage: the wave card at the top of the screen picks which enemies the strip shows.
+  let dockWave = -1, dockMinis = [];
+  function renderDockTeam(order) {
+    const row = $("dk-row");
+    if (row) row.innerHTML = order.map((u, p) => (p === FRONT && order.length > FRONT ? '<span class="dk-sep" aria-hidden="true"></span>' : "") + (dockMinis[u] || "")).join("");
+  }
+  function syncDockWave() {
+    const box = $("dk-wave");
+    if (!box) return;
+    const waves = CFG.quest?.waves;
+    if (!waves || STAGES[state.view]?.kind !== "route") { if (dockWave !== -1 || box.hidden === false) renderDockTeam(dockMinis.map((_, k) => k)); box.hidden = true; dockWave = -1; return; }
+    const cards = [...document.querySelectorAll("#cols > .col")];
+    // A card counts as in view once its top passes a line a little below the strip.
+    const line = ($("dock").hidden ? 0 : $("dock").offsetHeight) + Math.min(220, innerHeight * 0.3);
+    let w = 0;
+    cards.forEach((c, k) => { if (c.getBoundingClientRect().top <= line) w = k; });
+    if (innerHeight + scrollY >= document.documentElement.scrollHeight - 4) w = cards.length - 1;
+    w = Math.min(w, waves.length - 1);
+    box.hidden = false;
+    if (w === dockWave) return;
+    dockWave = w;
+    renderDockTeam(lineupAt(w));
+    const fmt = n => n.toLocaleString("en-US");
+    const total = waves[w].reduce((n, e) => n + e.hp, 0);
+    box.innerHTML = `<div class="dkw-inner"><span class="dkw-label">Wave ${w + 1}<small>${fmt(total)} HP</small></span><div class="dkw-list">${waves[w].map(e => `<div class="dkw-e" title="${esc(e.name)} · ${esc(e.cls)} · ${fmt(e.hp)} HP">${e.sprite ? `<img src="${esc(e.sprite)}" alt="" width="32" height="32" decoding="async">` : ""}<span class="dkw-txt"><span class="dkw-name">${esc(e.name)}</span><span class="dkw-hp">${fmt(e.hp)}</span></span></div>`).join("")}</div></div>`;
+  }
+
+  function renderSteps() {
+    $("steps").innerHTML = STAGES.map((s, st) => {
+      const done = stageOver(st), open = unlocked(st);
+      const solved = COLS(st).filter(i => won(st, i)).length;
+      const status = done ? `Done · ${solved}/${s.cols} ${s.kind === "route" ? "waves" : "found"}` : open ? "In progress" : "Locked";
+      return `<button type="button" class="step ${done ? "done" : ""}" data-st="${st}" ${open ? "" : "disabled"} ${state.view === st ? 'aria-current="step"' : ""}>
+        <span class="s-n">Stage ${st + 1}</span><span class="s-t">${s.title}</span><span class="s-st">${status}</span></button>`;
+    }).join("");
+    $("steps").querySelectorAll(".step").forEach(b => b.onclick = () => { state.view = +b.dataset.st; save(); render(); });
+  }
+
+  const actTile = (c, cls, k, tag = "span", attrs = "") => `<${tag} class="act ${cls}" title="${esc(actName(c))}" ${attrs}>${k != null ? `<span class="n">${k + 1}</span>` : ""}${iconImg(c, "t-ico")}${esc(actLabel(c))}</${tag}>`;
+
+  function routeColHtml(st, w) {
+    const S = STAGES[st], W = RT.waves[w], gs = state.g[st][w], L = W.set.length;
+    const done = over(st, w), ok = won(st, w);
+    const enemies = CFG.quest?.waves?.[w];
+    const sub = enemies ? `<span class="who">${enemies.length} ${enemies.length === 1 ? "enemy" : "enemies"} · ${L} actions</span>` : `<span class="who">${L} actions</span>`;
+    const pips = Array.from({ length: S.max }, (_, k) => `<span class="pip ${gs[k] ? verdict(st, gs[k], w) : ""}"></span>`).join("");
+    const hist = gs.map((g, k) => { const gr = grade(w, g); return `<div class="seq history-row" aria-label="Guess ${k + 1}">${g.map((c, p) => actTile(c, gr[p], p)).join("")}</div>`; }).join("");
+    let body;
+    if (done) {
+      body = `<div class="outcome ${ok ? "won" : "lost"}">${ok ? `Solved in ${gs.length}/${S.max}` : "Out of guesses. Here's the route:"}</div>
+        <span class="r-label">The route</span><div class="seq">${W.route.map((c, p) => actTile(c, "hit", p)).join("")}</div>
+        ${W.note ? `<p class="r-note">${esc(W.note)}</p>` : ""}${lineupSequence(w)}`;
+    } else {
+      const d = draft[w] || (draft[w] = []);
+      const best = new Map();
+      const rank = { hit: 3, near: 2, other: 1, miss: 0 };
+      gs.forEach(g => grade(w, g).forEach((v, p) => { const c = g[p]; if (!best.has(c) || rank[v] > rank[best.get(c)]) best.set(c, v); }));
+      const slotsHtml = Array.from({ length: L }, (_, p) => d[p] != null
+        ? actTile(d[p], "fill", p, "button", `type="button" data-rm="${p}" data-w="${w}" aria-label="Remove ${esc(actLabel(d[p]))} from position ${p + 1}"`)
+        : `<span class="act blank">${p + 1}</span>`).join("");
+      const btn = c => {
+        const lw = lockedBy(st, w, c);
+        const ico = iconImg(c, "p-ico");
+        if (lw >= 0) return `<button type="button" class="locked${ico ? " has-ico" : ""}" disabled aria-label="${esc(actLabel(c))}: used in wave ${lw + 1}">${ico}<span>${actKey(c)}</span><small>Used in W${lw + 1}</small></button>`;
+        return `<button type="button" class="${best.get(c) || ""}${ico ? " has-ico" : ""}" data-add="${c}" data-w="${w}" ${d.includes(c) || d.length >= L ? "disabled" : ""} aria-label="${esc(actLabel(c))}: ${esc(actName(c))}">${ico}<span>${actKey(c)}</span><small>${esc(actName(c))}</small></button>`;
+      };
+      const unitNo = ui => ui < CFG.shown.length ? CFG.shown[ui].servant : (SERV < 0 ? SLOTS[ui - CFG.shown.length].servant : STAGES[SERV].ans[ui - CFG.shown.length]);
+      const rows = RT.units.map((u, ui) => `<div class="pal-row"><span class="who">${face(unitNo(ui), 28)}${esc(u.nick)}</span>${[1, 2, 3, 4].map(a => btn(ui * 10 + a)).join("")}</div>`).join("")
+        + `<div class="pal-row"><span class="who">${esc(RT.mc.name)}</span>${[1, 2, 3].map(a => btn(90 + a)).join("")}<span class="spacer"></span></div>`;
+      body = `<span class="r-label">Your route</span><div class="seq">${slotsHtml}</div>
+        <div class="r-ctl"><button class="primary" type="button" data-go="${w}" ${d.length === L ? "" : "disabled"}>Submit route</button><button class="ghost" type="button" data-undo="${w}" ${d.length ? "" : "disabled"}>Undo</button><button class="ghost" type="button" data-clear="${w}" ${d.length ? "" : "disabled"}>Clear</button></div>
+        <div class="msg" id="rmsg${w}" role="status"></div>
+        <div class="pal" role="group" aria-label="Actions for wave ${w + 1}">${rows}</div>`;
+    }
+    return `<div class="col ${done ? (ok ? "won" : "lost") : ""}"><div class="col-head"><h3>Wave ${w + 1}</h3>${sub}<span class="left">${done ? "" : `${S.max - gs.length} left`}</span></div>
+      <div class="pips" aria-hidden="true">${pips}</div>${gs.length ? `<div class="history">${hist}</div>` : ""}${body}</div>`;
+  }
+
+  function wireRoute(st) {
+    const cols = $("cols");
+    const msg = (w, t) => { const m = $("rmsg" + w); if (m) m.textContent = t; };
+    const again = sel => { render(); const el = cols.querySelector(sel); if (el && !el.disabled) el.focus(); };
+    cols.onclick = e => {
+      const b = e.target.closest("button");
+      if (!b || b.disabled) return;
+      const w = +(b.dataset.w ?? b.dataset.go ?? b.dataset.undo ?? b.dataset.clear ?? 0);
+      if (b.dataset.add) { draft[w].push(+b.dataset.add); again(draft[w].length === RT.waves[w].set.length ? `[data-go="${w}"]` : `[data-add="${b.dataset.add}"][data-w="${w}"]`); }
+      else if (b.dataset.rm) { draft[w].splice(+b.dataset.rm, 1); again(`[data-undo="${w}"]`); }
+      else if (b.dataset.undo != null) { draft[w].pop(); again(`[data-undo="${w}"]`); }
+      else if (b.dataset.clear != null) { draft[w] = []; again(`[data-w="${w}"][data-add]:not(:disabled)`); }
+      else if (b.dataset.go != null) {
+        const g = draft[w];
+        if (state.g[st][w].some(p => p.join() === g.join())) { msg(w, "You already tried that exact route."); return; }
+        draft[w] = [];
+        guess(st, w, g.slice());
+      }
+    };
+  }
+
+  function colHtml(st, i) {
+    if (STAGES[st].kind === "route") return routeColHtml(st, i);
+    const S = STAGES[st], sl = SLOTS[i], gs = state.g[st][i];
+    const done = over(st, i), w = won(st, i);
+    const known = SERV < 0 ? sl.servant : (st > SERV ? STAGES[SERV].ans[i] : null);
+    const who = known ? `<span class="who li-main">${face(known, 22)}${esc(SV.get(known).name)}</span>` : "";
+    const nh = hintsOf(st, i), facts = hintFacts(st, i);
+    const pips = Array.from({ length: S.max }, (_, k) => `<span class="pip ${k < nh ? "hint" : gs[k - nh] != null ? verdict(st, gs[k - nh], i) : ""}"></span>`).join("");
+    const hintsHtml = (nh ? `<div class="hints" aria-label="Hints">${facts.slice(0, nh).map(([k, v]) => `<span class="hint-chip">💡 ${esc(k)}: <b>${esc(v)}</b></span>`).join("")}</div>` : "")
+      + (!done && nh < facts.length && used(st, i) < S.max - 1 ? `<button type="button" class="ghost hint-btn" data-hint="${i}">💡 Hint: ${esc(/^[A-Z]{2,}$/.test(facts[nh][0]) ? facts[nh][0] : facts[nh][0].toLowerCase())} (costs 1 try)</button>` : "");
+    let entry;
+    if (done) {
+      entry = `<div class="outcome ${w ? "won" : "lost"}">${w ? `Solved in ${used(st, i)}/${S.max}${nh ? ` (${nh} hint${nh > 1 ? "s" : ""})` : ""}` : `Out of guesses. It was ${esc(nameOf(st, S.ans[i]))}.`}</div>`;
+    } else if (S.input === "ceband") {
+      entry = `<div class="cb-pick" role="group" aria-label="Guess the CE and level range for ${esc(sl.name)}">${S.cePool.map(no => {
+        const c = CE.get(no);
+        return `<div class="cb-row"><span class="who">${ceIco(no, false, 26)}<span>${esc(c.name)} <small>${c.rar}★</small></span></span>${[1, 2, 3, 4, 5].map(b => {
+          const v = no * 10 + b, [lo, hi] = bandRange(no, b), tag = bandTag(b);
+          if (b === 1) return `<button type="button" data-cb="${v}" data-i="${i}" ${gs.includes(v) ? "disabled" : ""} aria-label="${esc(c.name)}, not MLB">Not<small>MLB</small></button>`;
+          return `<button type="button" data-cb="${v}" data-i="${i}" ${gs.includes(v) ? "disabled" : ""} aria-label="${esc(c.name)}, level ${lo} to ${hi}${tag ? `, ${tag}` : ""}">${lo}–${hi}<small>${tag === "MLB" ? `<b class="mlb-star" aria-hidden="true">★</b>MLB` : tag || "&nbsp;"}</small></button>`;
+        }).join("")}</div>`;
+      }).join("")}</div>`;
+    } else if (S.input === "np") {
+      entry = `<div class="np-pick" role="group" aria-label="Guess the NP level for ${esc(sl.name)}">${[1, 2, 3, 4, 5].map(n => `<button type="button" data-np="${n}" data-i="${i}" ${gs.includes(n) ? "disabled" : ""}>NP${n}</button>`).join("")}</div>`;
+    } else {
+      entry = `<form class="entry" data-i="${i}" autocomplete="off" novalidate>
+          <input id="in${i}" type="text" placeholder="Search ${S.unit}s" aria-label="Guess the ${S.unit} for ${esc(sl.name)}" role="combobox" aria-expanded="false" aria-controls="ls${i}" aria-autocomplete="list">
+          <button class="primary" type="submit">Guess</button>
+          <ul class="list" id="ls${i}" role="listbox" hidden></ul>
+        </form><div class="msg" id="msg${i}" role="status"></div>`;
+    }
+    const hist = gs.length
+      ? gs.map((v, k) => {
+          const vd = verdict(st, v, i);
+          const label = vd === "hit" ? "Correct" : vd === "near" ? "On the team, another slot"
+            : S.input === "np" ? `Wrong${cmp(v, S.ans[i], "· it's higher ▲", "· it's lower ▼")}` : S.missLabel;
+          const chips = S.pool ? `<div class="chips">${S.chips(S.pool.get(v), S.pool.get(S.ans[i]))}</div>`
+            : S.input === "ceband" ? `<div class="chips">${S.chips(v, S.ans[i])}</div>` : "";
+          return `<div class="tile ${vd}"><div class="t-top">${S.kind === "servant" ? face(v, 32) : S.input === "ceband" ? ceIco(Math.floor(v / 10), v % 10 >= 2, 32) : ""}<span class="t-name">${esc(nameOf(st, v))}</span><span class="t-n">#${k + 1}</span></div><div class="t-verdict">${label}</div>${chips}</div>`;
+        }).reverse().join("")
+      : `<div class="empty">No guesses for this slot yet.</div>`;
+    return `<div class="col ${done ? (w ? "won" : "lost") : ""}"><div class="col-head"><h3>${esc(sl.name)}</h3>${who}<span class="left">${done ? "" : `${S.max - used(st, i)} left`}</span></div>
+      <div class="pips" aria-hidden="true">${pips}</div>${hintsHtml}${entry}<div class="history">${hist}</div></div>`;
+  }
+
+  function wireSearch(st, i) {
+    const form = document.querySelector(`form[data-i="${i}"]`);
+    if (!form) return;
+    const pool = [...STAGES[st].pool.values()];
+    const input = $("in" + i), list = $("ls" + i), msg = $("msg" + i);
+    let items = [], active = -1, pick = null;
+    const close = () => { list.hidden = true; input.setAttribute("aria-expanded", "false"); active = -1; input.removeAttribute("aria-activedescendant"); };
+    const choose = s => { pick = s.no; input.value = s.name; close(); msg.textContent = ""; if (STAGES[st].kind === "servant") say(s.no, "sel"); };
+    const paint = () => {
+      const used = new Set(state.g[st][i]);
+      list.innerHTML = items.map((s, k) => `<li role="option" id="o${i}-${k}" class="${used.has(s.no) ? "used" : ""}" aria-selected="${k === active}" data-k="${k}"><span class="li-main">${STAGES[st].kind === "servant" ? face(s.no, 28) : ""}<span>${esc(s.name)}</span></span><small>${esc(s.sub)}</small></li>`).join("");
+      if (active >= 0) { input.setAttribute("aria-activedescendant", `o${i}-${active}`); list.children[active]?.scrollIntoView({ block: "nearest" }); }
+    };
+    const open = () => {
+      const q = norm(input.value).trim();
+      if (!q) { items = []; close(); return; }
+      items = pool.filter(s => s.key.includes(q)).sort((a, b) => (a.key.startsWith(q) ? 0 : 1) - (b.key.startsWith(q) ? 0 : 1)).slice(0, 40);
+      active = items.length ? 0 : -1;
+      list.hidden = !items.length; input.setAttribute("aria-expanded", String(!!items.length)); paint();
+    };
+    input.addEventListener("input", () => { pick = null; open(); });
+    input.addEventListener("blur", () => setTimeout(close, 120));
+    input.addEventListener("keydown", e => {
+      if (list.hidden) return;
+      if (e.key === "ArrowDown") { active = Math.min(items.length - 1, active + 1); paint(); e.preventDefault(); }
+      else if (e.key === "ArrowUp") { active = Math.max(0, active - 1); paint(); e.preventDefault(); }
+      else if (e.key === "Enter") { if (items[active]) { choose(items[active]); e.preventDefault(); } }
+      else if (e.key === "Escape") close();
+    });
+    list.addEventListener("mousedown", e => { const li = e.target.closest("li"); if (li) { e.preventDefault(); choose(items[+li.dataset.k]); } });
+    form.addEventListener("submit", e => {
+      e.preventDefault();
+      if (!pick) { msg.textContent = `Type a name and pick a ${STAGES[st].unit} from the list.`; return; }
+      if (state.g[st][i].includes(pick)) { msg.textContent = "You already tried that one for this slot."; return; }
+      guess(st, i, pick);
+      if (!over(st, i)) $("in" + i)?.focus();
+    });
+  }
+
+  // ---- voice lines (servant stage): pick = card-select line, correct = victory, wrong = KO ----
+  // Packs are voice/<no>.json next to the page, fetched on first use and played through Web Audio.
+  const VOICES = Array.isArray(CFG.voices) ? new Set(CFG.voices) : null;
+  const SOUND_KEY = CFG.storageKey + ":sound";
+  let soundOn = (() => { try { return localStorage.getItem(SOUND_KEY) !== "off"; } catch { return true; } })();
+  const packs = new Map(), clips = new Map();
+  let actx = null, playing = null, sayTicket = 0;
+  const loadPack = no => {
+    if (!packs.has(no)) packs.set(no, (typeof fetch === "function" ? fetch(`voice/${no}.json`) : Promise.reject())
+      .then(r => r.ok ? r.json() : null).catch(() => null));
+    return packs.get(no);
+  };
+  async function say(no, kind) {
+    // Only the most recent request may play: a slower download must not cut in after a newer click.
+    const ticket = ++sayTicket;
+    try { playing?.stop(); } catch {}
+    if (!soundOn || !VOICES?.has(no)) return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    try {
+      actx = actx || new AC();
+      if (actx.state === "suspended") await actx.resume();
+      let buf = clips.get(no + kind);
+      if (!buf) {
+        const p = await loadPack(no);
+        if (!p?.[kind]) return;
+        buf = await actx.decodeAudioData(Uint8Array.from(atob(p[kind]), c => c.charCodeAt(0)).buffer);
+        clips.set(no + kind, buf);
+      }
+      if (ticket !== sayTicket) return;
+      try { playing?.stop(); } catch {}
+      const src = actx.createBufferSource(), gain = actx.createGain();
+      gain.gain.value = 0.8;
+      src.buffer = buf; src.connect(gain); gain.connect(actx.destination); src.start();
+      playing = src;
+    } catch {}
+  }
+  function renderSound() {
+    const b = $("sound");
+    if (!VOICES || !(STAGES.some(s => s.kind === "servant") || Object.keys(CFG.ceVoices || {}).length)) return;
+    b.hidden = false;
+    b.setAttribute("aria-pressed", String(soundOn));
+    b.textContent = soundOn ? "🔊 Voices on" : "🔇 Voices off";
+    b.onclick = () => { soundOn = !soundOn; try { localStorage.setItem(SOUND_KEY, soundOn ? "on" : "off"); } catch {} if (!soundOn) { try { playing?.stop(); } catch {} } renderSound(); };
+  }
+
+  // Hints: one fact about the slot's answer per press, in a fixed order. Servant and CE stages only.
+  function hintFacts(st, i) {
+    const S = STAGES[st];
+    if (S.kind === "servant") {
+      const a = SV.get(S.ans[i]);
+      return [["Class", a.cls], ["Rarity", a.rar + "★"], ["NP", a.np === "Support" ? `${a.card} support NP` : `${a.card} ${a.np} NP`]];
+    }
+    if (S.kind === "ce" && S.input === "ceband") {
+      const no = Math.floor(S.ans[i] / 10), b = S.ans[i] % 10;
+      return [["Rarity", CE.get(no).rar + "★"], ["MLB", b >= 2 ? "Yes" : "No"]];
+    }
+    if (S.kind === "ce") { const c = CE.get(S.ans[i]); return [["Rarity", c.rar + "★"], ["Type", c.kind]]; }
+    return [];
+  }
+  function takeHint(st, i) {
+    if (over(st, i) || used(st, i) >= STAGES[st].max - 1 || hintsOf(st, i) >= hintFacts(st, i).length) return;
+    state.h[st][i] = hintsOf(st, i) + 1;
+    save(); render();
+    document.querySelector(`[data-hint="${i}"]`)?.focus();
+  }
+
+  function guess(st, i, v) {
+    if (STAGES[st].kind === "servant") say(v, v === STAGES[st].ans[i] ? "win" : "ko");
+    state.g[st][i].push(v);
+    const before = state.view;
+    save(); render();
+    if (stageOver(st) && st < STAGES.length - 1 && before === st) {
+      $("banner").innerHTML = `<div class="banner" role="status">Stage ${st + 1} complete. <button class="primary" type="button" id="next">Go to ${STAGES[st + 1].title}</button></div>`;
+      $("next").onclick = () => { state.view = st + 1; save(); render(); };
+    }
+  }
+
+  function shareText() {
+    const out = [`${CFG.title} ${CFG.shareEmoji || ""}`.trim()];
+    STAGES.forEach((S, st) => {
+      if (STAGES.length > 1) out.push(S.title);
+      COLS(st).forEach(i => {
+        const gs = state.g[st][i];
+        const sq = (S.kind === "route" ? "" : "💡".repeat(hintsOf(st, i))) + gs.map(v => ({ hit: "🟩", near: "🟨", miss: "⬛" }[verdict(st, v, i)])).join("");
+        const label = S.kind === "route" ? `W${i + 1}` : SLOTS[i].short;
+        out.push(`${label.padEnd(4)} ${sq} ${won(st, i) ? used(st, i) : "X"}/${S.max}`);
+      });
+    });
+    return out.join("\n");
+  }
+
+  // CE stage: what each pool CE does, once, above the slot cards.
+  function renderCeRef(st) {
+    const S = STAGES[st];
+    if (S.input !== "ceband" || !CFG.ceInfo) { $("ceref").innerHTML = ""; return; }
+    $("ceref").innerHTML = `<details class="ceref" open><summary>What these CEs do</summary><div class="ceref-list">${S.cePool.map(no => {
+      const c = CE.get(no), i = CFG.ceInfo[no] || {};
+      return `<div class="ceref-item">${ceIco(no, false, 40)}<div><div class="ceref-name">${esc(c.name)} <small>${c.rar}★</small></div>
+        ${i.base ? `<p>${esc(i.base)}</p>` : ""}${i.mlb ? `<p><b class="mlb-star" aria-hidden="true">★</b><b>MLB:</b> ${esc(i.mlb)}</p>` : ""}${i.event ? `<p class="ceref-ev">Event: ${esc(i.event)}</p>` : ""}</div></div>`;
+    }).join("")}</div></details>`;
+  }
+
+  // End-of-game summary: why the team works, plus an optional link (e.g. a Laplace share).
+  function summaryHtml() {
+    const s = CFG.summary;
+    if (!s) return "";
+    const link = s.link?.url && /^https:\/\//.test(s.link.url) ? `<a class="sum-link" href="${esc(s.link.url)}" target="_blank" rel="noopener">${esc(s.link.label || "Open the team")} ↗</a>` : "";
+    return `<div class="summary"><h4>${esc(s.title || "Why this team works")}</h4><ol>${(s.points || []).map(p => `<li>${esc(p)}</li>`).join("")}</ol>${link}</div>`;
+  }
+
+  function renderResult() {
+    if (current() !== STAGES.length) { $("result").innerHTML = ""; return; }
+    const total = STAGES.reduce((n, S) => n + S.cols, 0);
+    const found = STAGES.reduce((n, _, st) => n + COLS(st).filter(i => won(st, i)).length, 0);
+    $("result").innerHTML = `<div class="result"><h3>${found === total ? "Perfect team" : `${found} of ${total} found`}</h3>
+      ${summaryHtml()}
+      <p class="note" style="margin:0">The full builds are in the party above, and each wave card shows its route.</p>
+      <pre id="share">${esc(shareText())}</pre>
+      <div class="actions"><button class="primary" type="button" id="copy">Copy result for Reddit</button><button class="ghost" type="button" id="reset">Play again</button><span class="note" id="copymsg" role="status"></span></div></div>`;
+    $("copy").onclick = () => {
+      const ok = () => { $("copymsg").textContent = "Copied. Paste it in the thread."; };
+      const fallback = () => { const r = document.createRange(); r.selectNodeContents($("share")); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); $("copymsg").textContent = "Selected. Press Ctrl+C to copy."; };
+      try { navigator.clipboard.writeText(shareText()).then(ok, fallback); } catch { fallback(); }
+    };
+    $("reset").onclick = () => { state = fresh(); save(); render(); };
+  }
+
+  function render() {
+    if (!unlocked(state.view)) state.view = Math.min(current(), STAGES.length - 1);
+    const st = state.view;
+    renderFormation(); renderSteps(); renderResult();
+    $("banner").innerHTML = "";
+    $("key").innerHTML = STAGES[st].key + `${hintFacts(st, 0).length ? "<span>💡 A hint reveals one fact about the answer and uses up a try.</span>" : ""}<span>${STAGES[st].max} ${STAGES[st].max === 1 ? "try" : "tries"} per ${STAGES[st].kind === "route" ? "wave" : "slot"}.</span>`;
+    renderCeRef(st);
+    $("cols").classList.toggle("one", STAGES[st].kind === "route");
+    // A search box plus its Guess button needs ~300px; past three slots, wrap the cards instead of overflowing.
+    $("cols").classList.toggle("wide", STAGES[st].input === "ceband" || (STAGES[st].input === "search" && N > 3));
+    $("cols").onclick = null;
+    $("cols").innerHTML = COLS(st).map(i => colHtml(st, i)).join("");
+    $("cols").querySelectorAll("[data-hint]").forEach(b => b.onclick = () => takeHint(st, +b.dataset.hint));
+    if (STAGES[st].input === "search") IDX.forEach(i => wireSearch(st, i));
+    else if (STAGES[st].input === "route") wireRoute(st);
+    else if (STAGES[st].input === "ceband") $("cols").querySelectorAll("[data-cb]").forEach(b => b.onclick = () => {
+      const v = +b.dataset.cb, no = CFG.ceVoices?.[Math.floor(v / 10)];
+      if (no) say(no, "sel");
+      guess(st, +b.dataset.i, v);
+    });
+    else $("cols").querySelectorAll("[data-np]").forEach(b => b.onclick = () => guess(st, +b.dataset.i, +b.dataset.np));
+    dockWave = -1; syncDockWave();
+  }
+
+  header();
+  // Show the strip only while the party section is scrolled out of view above.
+  try {
+    // Visible once the party section has scrolled fully above the top edge; checked on every scroll and resize.
+    const syncDock = () => { $("dock").hidden = $("party-sec").getBoundingClientRect().bottom > 0; syncDockWave(); };
+    let raf = 0;
+    const queue = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; syncDock(); }); };
+    addEventListener("scroll", queue, { passive: true });
+    addEventListener("resize", queue);
+    syncDock();
+  } catch {}
+  renderSound();
+  renderQuest();
+  render();
+})();
+</script>
